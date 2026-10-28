@@ -83,7 +83,8 @@ function load(){
       bonuses: p.bonuses || {},
       plan: Object.assign({}, DEFAULTS.plan, p.plan || {}),
       ui: Object.assign({}, DEFAULTS.ui, p.ui || {}),
-      onboarded: !!p.onboarded
+      onboarded: !!p.onboarded,
+      pin: p.pin || ''
     };
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -265,7 +266,7 @@ function renderHome(){
   const now = new Date();
   const prof = S.profile;
   $('#tbRate').textContent = prof.rate || 0;
-  $('#heroHi').textContent = prof.name ? `Привет, ${prof.name}` : 'Привет';
+  $('#heroHi').textContent = prof.name ? `Привет, ${prof.name}!` : 'Привет!';
   $('#heroDate').textContent = now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
 
   const sh = getShift(ti);
@@ -935,6 +936,7 @@ function renderSet(){
   $('#fNight').value = S.profile.nightPct ?? 0;
   $('#fHol').value = S.profile.holPct ?? 0;
   $('#abRate').textContent = (S.profile.rate || 0) + ' ₽';
+  const pp = $('#pinPill'); if(pp){ pp.textContent = S.pin ? 'включён' : 'выключен'; pp.classList.toggle('on', !!S.pin); }
   $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === (S.ui.sound ?? 1)));
   $('#fShiftStart').value = S.profile.shiftStart || '10:00';
   $('#fShiftEnd').value = S.profile.shiftEnd || '23:45';
@@ -1027,6 +1029,22 @@ function initActions(){
     if(a === 'open-sched') b.onclick = () => $$('.tabbar button').find(x => x.dataset.tab === 'sched').click();
     if(a === 'open-cal') b.onclick = () => $$('.tabbar button').find(x => x.dataset.tab === 'cal').click();
     if(a === 'make-report') b.onclick = makeReport;
+    if(a === 'set-pin') b.onclick = () => {
+      S.pin = ''; save();
+      lockState = 'pin';
+      $('#lock').classList.add('on');
+      $('#lockNameWrap').classList.remove('on');
+      $('#lockTitle').textContent = APP_NAME;
+      $('#lockText').textContent = 'Новый PIN: 4–6 цифр';
+      $('#lockGo').textContent = 'Сохранить';
+      $('#lockReset').style.display = 'none';
+      $('#lockPin').value = ''; pinTmp = '';
+      $('#lockPin').focus();
+    };
+    if(a === 'off-pin') b.onclick = () => {
+      if(!S.pin){ toast('PIN и не установлен'); return; }
+      if(confirm('Отключить вход по PIN?')){ S.pin = ''; save(); toast('PIN отключён'); renderSet(); }
+    };
     if(a === 'open-bonus') b.onclick = () => {
       const d = todayISO(), sh = getShift(d);
       if(!sh || sh.kind !== 'work'){ toast('Сначала отметь смену на сегодня'); openSheet(d); return; }
@@ -1204,6 +1222,99 @@ function renderBadges(){
   ].map(([k,v]) => `<div class="br"><span>${k}</span><b>${v}</b></div>`).join('');
 }
 
+
+/* ═══════════════ ЭКРАН ВХОДА: имя + PIN ═══════════════ */
+const APP_NAME = 'Смена';
+let lockState = 'unlock', pinTmp = '', pinTmp2 = '';
+
+async function hashPin(pin){
+  try{
+    if(window.crypto && window.crypto.subtle){
+      const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode('farfor-smena:' + pin));
+      return 's' + [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  let h = 5381;
+  for(let i = 0; i < pin.length; i++) h = ((h << 5) + h + pin.charCodeAt(i)) >>> 0;
+  return 'f' + h.toString(16);
+}
+function initLock(){
+  const el = $('#lock');
+  const hasPin = !!(S.pin && S.pin.length);
+  if(!hasPin){
+    lockState = 'name';
+    $('#lockTitle').textContent = APP_NAME;
+    $('#lockText').textContent = 'Как тебя звать?';
+    $('#lockNameWrap').classList.add('on');
+    $('#lockGo').textContent = 'Дальше';
+    $('#lockReset').style.display = 'none';
+  }else{
+    lockState = 'unlock';
+    $('#lockTitle').textContent = APP_NAME;
+    $('#lockText').textContent = 'Привет, ' + (S.profile.name || 'повар') + '! Введи код';
+    $('#lockGo').textContent = 'Войти';
+    $('#lockReset').style.display = '';
+  }
+  el.classList.add('on');
+  const pin = $('#lockPin');
+  pin.oninput = () => { pin.value = pin.value.replace(/\D/g,'').slice(0,6); $('#lockHint').textContent = ''; };
+  pin.onkeydown = e => { if(e.key === 'Enter') lockGo(); };
+  $('#lockGo').onclick = lockGo;
+  $('#lockReset').onclick = () => {
+    if(confirm('Сбросить PIN и имя? Смены и деньги останутся на месте.')){
+      S.pin = ''; S.profile.name = ''; save();
+      lockState = 'name'; pinTmp = ''; pinTmp2 = '';
+      $('#lockNameWrap').classList.add('on');
+      $('#lockText').textContent = 'Как тебя звать?';
+      $('#lockGo').textContent = 'Дальше';
+      $('#lockReset').style.display = 'none';
+      $('#lockPin').value = '';
+    }
+  };
+  setTimeout(() => { const f = lockState === 'name' ? $('#lockName') : $('#lockPin'); f.focus(); }, 350);
+}
+async function lockGo(){
+  const name = $('#lockName').value.trim();
+  const pin = $('#lockPin').value.trim();
+  $('#lockHint').textContent = '';
+  if(lockState === 'name'){
+    if(!name){ $('#lockHint').textContent = 'Введи имя'; return; }
+    S.profile.name = name;
+    lockState = 'pin'; pinTmp = '';
+    $('#lockNameWrap').classList.remove('on');
+    $('#lockText').textContent = 'Придумай PIN: 4–6 цифр';
+    $('#lockGo').textContent = 'Дальше';
+    $('#lockPin').value = '';
+    $('#lockPin').focus();
+    return;
+  }
+  if(lockState === 'pin'){
+    if(!/^\d{4,6}$/.test(pin)){ $('#lockHint').textContent = 'Нужно 4–6 цифр'; return; }
+    pinTmp = pin; lockState = 'pin2';
+    $('#lockText').textContent = 'Повтори код';
+    $('#lockPin').value = '';
+    $('#lockPin').focus();
+    return;
+  }
+  if(lockState === 'pin2'){
+    if(pin !== pinTmp){ $('#lockHint').textContent = 'Коды не совпали, попробуй ещё'; lockState = 'pin'; pinTmp=''; $('#lockPin').value=''; return; }
+    S.pin = await hashPin(pin);
+    save();
+    unlockApp();
+    return;
+  }
+  // unlock
+  const h = await hashPin(pin);
+  if(h === S.pin){ unlockApp(); }
+  else { $('#lockHint').textContent = 'Неверный код'; $('#lockPin').value = ''; $('#lockPin').focus(); }
+}
+function unlockApp(){
+  $('#lock').classList.remove('on');
+  $('#tbTitle').textContent = APP_NAME;
+  renderAll();
+  toast('Привет, ' + (S.profile.name || 'повар') + '!');
+}
+
 /* ─────────────── ЗАПУСК ─────────────── */
 function renderAll(){
   renderHome(); renderCal(); renderSched(); renderStats(); renderSet();
@@ -1212,8 +1323,9 @@ function renderAll(){
   if($('#badges')) renderBadges();
 }
 function init(){
-  initSplash(); initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
-  initOnb(); initCalc(); applyTheme();
+  initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
+  initCalc(); applyTheme(); initLock();
+  setTimeout(initOnb, 300);
   $$('[data-go]').forEach(b => b.onclick = () => { sound('tap'); openSub(b.dataset.go); });
   $$('[data-back]').forEach(b => b.onclick = () => { sound('tap'); closeSub(); });
   $$('#fsChips .chip').forEach(c => c.onclick = () => {
