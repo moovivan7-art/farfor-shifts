@@ -49,7 +49,7 @@
 <main id="app">
 
   <!-- ══════════ СЕГОДНЯ ══════════ -->
-  <section class="view" id="view-home">
+  <section class="view on" id="view-home">
     <div class="hero" id="heroCard">
       <div class="hero-top">
         <span class="hero-hi" id="heroHi">Привет</span>
@@ -88,9 +88,9 @@
     <div class="card">
       <div class="card-h"><h3>Прогноз: сколько получу</h3><span class="pill" id="payPill">зарплата 10-го</span></div>
       <div class="forecast">
-        <div class="fc-row"><span>Уже заработано</span><b id="fcFact">0 ₽</b></div>
-        <div class="fc-row"><span>По графику до зарплаты</span><b id="fcPlan">0 ₽</b></div>
-        <div class="fc-row big"><span>Ожидаю на руки</span><b id="fcTotal">0 ₽</b></div>
+        <div class="fc-row"><span id="fcLbl1">Зарплата</span><b id="fcPay1">—</b></div>
+        <div class="fc-row"><span id="fcLbl2">Аванс</span><b id="fcPay2">—</b></div>
+        <div class="fc-row big"><span id="fcLbl3">Ближайшая выплата</span><b id="fcTotal">0 ₽</b></div>
       </div>
       <div class="fc-bar"><i id="fcBar"></i></div>
       <div class="fc-note" id="fcNote"></div>
@@ -221,12 +221,20 @@
       </div>
       <div class="field"><label>Часов в смене по умолчанию</label><input type="number" id="fHours" inputmode="decimal" min="1" max="24" step="0.25"></div>
       <div class="field"><label>Точка / ресторан</label><input type="text" id="fPoint" placeholder="Уфа, Айская"></div>
-      <div class="field"><label>День зарплаты</label>
-        <select id="fPayday">
-          <option value="1">1-е число</option><option value="5">5-е</option>
-          <option value="10">10-е</option><option value="15">15-е</option>
-          <option value="20">20-е</option>
-        </select>
+      <div class="field row2">
+        <div><label>Аванс — какого числа</label>
+          <select id="fAdvance">
+            <option value="1">1-е</option><option value="5">5-е</option>
+            <option value="10">10-е</option><option value="15">15-е</option>
+          </select>
+        </div>
+        <div><label>Зарплата — какого числа</label>
+          <select id="fPayday">
+            <option value="10">10-е</option><option value="15">15-е</option>
+            <option value="20">20-е</option><option value="25">25-е</option>
+            <option value="31">31-е</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -293,7 +301,6 @@
           <button data-kind="work" class="chip on">Смена</button>
           <button data-kind="off" class="chip">Отдых</button>
           <button data-kind="vacation" class="chip">Отпуск</button>
-          <button data-kind="sick" class="chip">Больничный</button>
         </div>
       </div>
       <div class="field" id="hoursField"><label>Часов в смене</label>
