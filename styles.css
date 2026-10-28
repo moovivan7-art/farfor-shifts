@@ -233,7 +233,7 @@ main{padding:16px 16px calc(var(--tb) + var(--sb) + 26px);max-width:620px;margin
   animation:up .3s cubic-bezier(.2,1,.3,1)}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 .sh-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
-.sh-date{font-weight:800;font-size:17px;text-transform:capitalize}
+.sh-date{font-weight:800;font-size:17px}
 .sh-hol{font-size:11.5px;color:var(--acc2);margin-top:2px}
 .sh-x{width:32px;height:32px;border-radius:10px;background:var(--card2);border:1px solid var(--line);color:var(--mut)}
 .sh-sum{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center;margin:4px 0 14px}
@@ -310,3 +310,8 @@ body[data-theme="light"] .card,body[data-theme="light"] .stat{box-shadow:0 8px 2
 body[data-theme="light"] .txtbox{color:#2a2d34}
 body[data-theme="light"] .day.work{color:#fff}
 body[data-theme="light"] .splash-skip{color:var(--mut2)}
+
+.hours-row{display:flex;align-items:center;gap:9px;margin-top:9px}
+.hours-row input{width:92px;text-align:center;font-weight:700;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px;font-size:15px;outline:none}
+.hours-row input:focus{border-color:var(--acc)}
+.hours-row span{font-size:11.5px;color:var(--mut2)}

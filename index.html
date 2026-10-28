@@ -173,6 +173,8 @@
           <button class="nav" data-tab-range="next">›</button>
         </div>
       </div>
+      <button class="btn ghost" data-act="add-bonus" style="width:100%;margin-bottom:12px">+ Премия за месяц (бонус, доплата)</button>
+      <div id="bonusLine"></div>
       <div class="seg" id="tabSeg">
         <button data-tr="month" class="on">Месяц</button>
         <button data-tr="q">3 мес</button>
@@ -213,7 +215,11 @@
       <div class="card-h"><h3>Профиль</h3></div>
       <div class="field"><label>Как тебя звать</label><input type="text" id="fName" placeholder="Повар"></div>
       <div class="field"><label>Часовая ставка, ₽</label><input type="number" id="fRate" inputmode="numeric" min="0" step="10"></div>
-      <div class="field"><label>Часов в смене по умолчанию</label><input type="number" id="fHours" inputmode="numeric" min="1" max="24" step="1"></div>
+      <div class="field row2">
+        <div><label>Смена с</label><input type="time" id="fShiftStart" value="10:00"></div>
+        <div><label>Смена до</label><input type="time" id="fShiftEnd" value="23:45"></div>
+      </div>
+      <div class="field"><label>Часов в смене по умолчанию</label><input type="number" id="fHours" inputmode="decimal" min="1" max="24" step="0.25"></div>
       <div class="field"><label>Точка / ресторан</label><input type="text" id="fPoint" placeholder="Уфа, Айская"></div>
       <div class="field"><label>День зарплаты</label>
         <select id="fPayday">
@@ -225,7 +231,7 @@
     </div>
     <div class="card">
       <div class="card-h"><h3>Доплаты</h3></div>
-      <p class="muted small">Так считают на кухне: ночная смена дороже, в праздник — двойная ставка.</p>
+      <p class="muted small">У тебя по умолчанию 275 ₽/час и смена 10:00–23:45 без доплат. Ночные и праздничные — на твоё усмотрение, бонусы можно приплюсовать в конце месяца через «Премию за месяц» в Табеле.</p>
       <div class="field row2">
         <div><label>Ночная смена, +%</label><input type="number" id="fNight" inputmode="numeric" min="0" max="200" step="5"></div>
         <div><label>Праздник, +%</label><input type="number" id="fHol" inputmode="numeric" min="0" max="300" step="10"></div>
@@ -292,6 +298,10 @@
       </div>
       <div class="field" id="hoursField"><label>Часов в смене</label>
         <div class="chips" id="hoursChips"></div>
+        <div class="hours-row">
+          <input type="number" id="shHours" min="0" max="24" step="0.25" inputmode="decimal">
+          <span>ч фактически отработал</span>
+        </div>
       </div>
       <div class="field" id="slotField"><label>Время смены</label>
         <div class="chips" id="slotChips"></div>
