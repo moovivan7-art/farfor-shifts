@@ -67,7 +67,8 @@ const DEFAULTS = {
   shifts: {},
   bonuses: {},
   plan: { pattern:'2-2', start:'', hours:13.75, shortMode:'6' },
-  ui: { range:'month', theme:'dark', tabRange:'month' }
+  ui: { range:'month', theme:'dark', tabRange:'month', fs:17, sound:1, wall:'' },
+  onboarded:false
 };
 let S = load();
 
@@ -81,7 +82,8 @@ function load(){
       shifts: p.shifts || {},
       bonuses: p.bonuses || {},
       plan: Object.assign({}, DEFAULTS.plan, p.plan || {}),
-      ui: Object.assign({}, DEFAULTS.ui, p.ui || {})
+      ui: Object.assign({}, DEFAULTS.ui, p.ui || {}),
+      onboarded: !!p.onboarded
     };
   }catch(e){ return structuredClone(DEFAULTS); }
 }
@@ -90,6 +92,25 @@ function applyTheme(){
   document.body.dataset.theme = t;
   const b = $('#themeBtn'); if(b) b.textContent = t === 'dark' ? '☀' : '☾';
   $$('#themeChips .chip').forEach(c => c.classList.toggle('on', c.dataset.theme === t));
+  applyFs(); applyWall();
+}
+function applyFs(){
+  const fs = S.ui.fs || 17;
+  document.documentElement.style.setProperty('--fs', fs + 'px');
+  $$('#fsChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.fs) === fs));
+}
+function applyWall(){
+  const w = S.ui.wall || '';
+  document.body.style.backgroundImage = w ? `url(assets/wallpapers/${w}.jpg)` : 'none';
+}
+let audioCtx = null;
+function sound(name){
+  if(!S.ui.sound) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const a = new Audio(`assets/sounds/${name}.mp3`);
+    a.volume = .45; a.play().catch(()=>{});
+  }catch(e){}
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -221,8 +242,14 @@ function initSplash(){
 /* ─────────────── ТАБЫ ─────────────── */
 function initTabs(){
   $$('.tabbar button').forEach(b => b.onclick = () => {
-    $$('.tabbar button').forEach(x => x.classList.remove('on'));
+    $$('.tabbar button').forEach(x => {
+      x.classList.remove('on');
+      const im = x.querySelector('img');
+      if(im) im.src = `assets/icons/${x.dataset.tab}-off.png`;
+    });
     b.classList.add('on');
+    const bim = b.querySelector('img');
+    if(bim) bim.src = `assets/icons/${b.dataset.tab}-on.png`;
     const v = b.dataset.tab;
     $$('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
     window.scrollTo(0,0);
@@ -507,7 +534,7 @@ function initSheet(){
       : { kind:sheetKind, hours:0, rate:0, bonus:0, note:$('#shNote').value.trim() };
     S.shifts[sheetDate] = rec;
     save(); $('#sheetWrap').classList.remove('on');
-    renderAll(); celebrate(); toast('Сохранено');
+    renderAll(); celebrate(); sound('save'); toast('Сохранено');
   };
   $('#shDel').onclick = () => {
     if(S.shifts[sheetDate]){ delete S.shifts[sheetDate]; save(); $('#sheetWrap').classList.remove('on'); renderAll(); toast('Удалено'); }
@@ -910,6 +937,8 @@ function renderSet(){
   $('#fAdvance').value = String(S.profile.advance || 1);
   $('#fNight').value = S.profile.nightPct ?? 0;
   $('#fHol').value = S.profile.holPct ?? 0;
+  $('#abRate').textContent = (S.profile.rate || 0) + ' ₽';
+  $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === (S.ui.sound ?? 1)));
   $('#fShiftStart').value = S.profile.shiftStart || '10:00';
   $('#fShiftEnd').value = S.profile.shiftEnd || '23:45';
   applyTheme();
@@ -1010,13 +1039,197 @@ function initActions(){
   });
 }
 
+
+/* ═══════════════ ОНБОРДИНГ ═══════════════ */
+const ONB = [
+  { art:'assets/art/kitchen.png',  title:'Привет, повар',      text:'Здесь считаются твои смены, часы и деньги. Настроим за полминуты.' },
+  { art:'assets/art/calendar.png',title:'Тапай по дню',        text:'Отметил смену — приложение само считает часы и сумму. Ушёл раньше? Впишешь фактические часы.' },
+  { art:'assets/art/money.png',   title:'Аванс и зарплата',    text:'Аванс 1-го, зарплата 15-го. Приложение покажет, сколько получу до каждой выплаты.' }
+];
+let onbIdx = 0;
+function initOnb(){
+  const el = $('#onb');
+  if(S.onboarded){ el.classList.remove('on'); return; }
+  el.classList.add('on');
+  renderOnb();
+  $('#onbNext').onclick = () => {
+    sound('tap');
+    if(onbIdx < ONB.length - 1){ onbIdx++; renderOnb(); }
+    else finishOnb();
+  };
+  $('#onbSkip').onclick = finishOnb;
+}
+function renderOnb(){
+  const s = ONB[onbIdx];
+  $('#onbArt').src = s.art;
+  $('#onbTitle').textContent = s.title;
+  $('#onbText').textContent = s.text;
+  $$('.onb-dots i').forEach((d,i) => d.classList.toggle('on', i === onbIdx));
+  $('#onbNext').textContent = onbIdx === ONB.length - 1 ? 'Начать' : 'Дальше';
+}
+function finishOnb(){
+  S.onboarded = true; save();
+  $('#onb').classList.remove('on');
+  toast('Готово — считаем смены!');
+}
+
+/* ═══════════════ ПОДРАЗДЕЛЫ ═══════════════ */
+let subFrom = 'view-set';
+function openSub(id){
+  const from = $('.view.on');
+  if(from) subFrom = from.id;
+  $$('.view').forEach(v => v.classList.remove('on'));
+  const t = $('#view-' + id); if(t) t.classList.add('on');
+  window.scrollTo(0,0);
+  if(id === 'theme') renderWalls();
+  if(id === 'calc') renderCalc();
+  if(id === 'badges') renderBadges();
+  if(id === 'profile') renderSet();
+}
+function closeSub(){
+  $$('.view').forEach(v => v.classList.remove('on'));
+  const t = $('#' + subFrom); if(t) t.classList.add('on');
+  window.scrollTo(0,0);
+}
+
+/* ═══════════════ ОБОИ ═══════════════ */
+const WALLS = ['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12','w13','w14','w15','w16'];
+function renderWalls(){
+  $('#walls').innerHTML = WALLS.map(w =>
+    `<button class="wall${(S.ui.wall||'')===w?' on':''}" data-wall="${w}" style="background-image:url(assets/wallpapers/${w}.jpg)"></button>`).join('');
+  $$('#walls .wall').forEach(b => b.onclick = () => {
+    S.ui.wall = (S.ui.wall === b.dataset.wall) ? '' : b.dataset.wall;
+    save(); applyWall(); renderWalls(); sound('tap');
+    toast(S.ui.wall ? 'Фон установлен' : 'Фон убран');
+  });
+}
+
+/* ═══════════════ РАСЧЁТЫ ═══════════════ */
+let calcMode = 'month';
+function initCalc(){
+  $$('#calcChips .chip').forEach(c => c.onclick = () => {
+    $$('#calcChips .chip').forEach(x => x.classList.remove('on'));
+    c.classList.add('on'); calcMode = c.dataset.calc; sound('tap');
+    $('#calcVacField').style.display = calcMode === 'vac' ? '' : 'none';
+    renderCalc();
+  });
+  $('#calcVacDays').oninput = renderCalc;
+}
+function renderCalc(){
+  const rate = S.profile.rate || 0;
+  const hrs  = S.plan.hours || S.profile.hours || 13.75;
+  const per  = rate * hrs;
+  const brk = [];
+  let val = 0, label = '';
+  if(calcMode === 'month'){
+    const m = monthRange(monthKey(todayISO()));
+    const planned = plannedShifts(m.from, m.to).length;
+    const fact = rangeSum(m.from, m.to);
+    val = planned * per + bonusOf(monthKey(todayISO()));
+    label = `по графику ${planned} ${plural(planned,'смена','смены','смен')} за ${money(per)}`;
+    brk.push(['Одна смена', money(per)]);
+    brk.push(['Смен по графику', String(planned)]);
+    brk.push(['Уже отработано', money(fact.money)]);
+    brk.push(['Премия месяца', money(bonusOf(monthKey(todayISO())))]);
+    brk.push(['Прогноз за месяц', money(val)]);
+  }else if(calcMode === 'year'){
+    const planned = plannedShifts(todayISO(), iso(addDays(today(), 364))).length;
+    val = planned * per;
+    label = `${planned} ${plural(planned,'смена','смены','смен')} за год`;
+    brk.push(['Среднее в месяц', money(Math.round(val/12))]);
+    brk.push(['Одна смена', money(per)]);
+    brk.push(['Прогноз за год', money(val)]);
+  }else if(calcMode === 'vac'){
+    const days = parseInt($('#calcVacDays').value || 14);
+    val = days * per;
+    label = `отпуск ${days} ${plural(days,'день','дня','дней')} — столько не заработаешь`;
+    brk.push(['Ставка в день (12 ч)', money(rate * 12)]);
+    brk.push(['Ставка в день (13 ч 45 мин)', money(per)]);
+    brk.push(['Потеря за отпуск', money(val)]);
+  }else{
+    val = Math.ceil(10000 / Math.max(1, rate));
+    label = `часов на 10 000 ₽ по ставке ${rate} ₽`;
+    brk.push(['Ставка', money(rate) + '/час']);
+    brk.push(['Нужно отработать', val + ' ч']);
+    brk.push(['Это смен', Math.ceil(val / hrs) + ' по ' + fmtHours(hrs)]);
+  }
+  $('#calcValue').textContent = money(val);
+  $('#calcLabel').textContent = label;
+  $('#calcBreak').innerHTML = brk.map(([k,v]) => `<div class="br"><span>${k}</span><b>${v}</b></div>`).join('');
+  const m = monthRange(monthKey(todayISO()));
+  const pats = PATTERNS.map(p => {
+    const perMonth = 30 / (p.w + p.o) * p.w;
+    return [p.id + ' · ' + p.desc, `${Math.round(perMonth)} смен · ${moneyShort(Math.round(perMonth*hrs*rate))}`];
+  });
+  $('#calcShifts').innerHTML = pats.map(([k,v]) => `<div class="br"><span>${k}</span><b>${v}</b></div>`).join('');
+}
+
+/* ═══════════════ НАГРАДЫ ═══════════════ */
+const BADGE_DEFS = [
+  { id:'first',   name:'Первая смена',  img:'first.png',   need:1,   unit:'смена' },
+  { id:'ten',     name:'10 смен',       img:'ten.png',     need:10,  unit:'смен' },
+  { id:'fifty',   name:'50 смен',       img:'fifty.png',   need:50,  unit:'смен' },
+  { id:'hundred', name:'100 часов',     img:'hundred.png', need:100, unit:'часов' },
+  { id:'thousand',name:'10 000 ₽',      img:'thousand.png',need:10000,unit:'₽' },
+  { id:'streak',  name:'Серия 7 дней',  img:'streak.png',  need:7,   unit:'дней' },
+  { id:'night',   name:'Ночная смена',  img:'night.png',   need:1,   unit:'ночная' },
+  { id:'bonus',   name:'С премией',     img:'bonus.png',   need:1,   unit:'премия' }
+];
+function badgeStats(){
+  const all = rangeSum('0000-01-01','9999-12-31');
+  let streak = 0;
+  const t = today();
+  for(let i = 0; i < 400; i++){
+    const s = getShift(iso(addDays(t,-i)));
+    if(s && s.kind === 'work') streak++;
+    else if(i === 0 && s && s.kind === 'off') continue;
+    else break;
+  }
+  const night = Object.values(S.shifts).filter(s => {
+    const sl = SLOTS.find(x => x.id === (s.slot||'day'));
+    return s.kind === 'work' && sl && sl.night;
+  }).length;
+  const bonus = Object.values(S.bonuses || {}).filter(b => b.amount > 0).length;
+  return { shifts: all.shifts, hours: all.hours, money: all.money, streak, night, bonus };
+}
+function renderBadges(){
+  const st = badgeStats();
+  const got = {
+    first: st.shifts >= 1, ten: st.shifts >= 10, fifty: st.shifts >= 50,
+    hundred: st.hours >= 100, thousand: st.money >= 10000, streak: st.streak >= 7,
+    night: st.night >= 1, bonus: st.bonus >= 1
+  };
+  $('#badges').innerHTML = BADGE_DEFS.map(b =>
+    `<div class="badge${got[b.id]?' got':''}"><img src="assets/badges/${b.img}" alt=""><b>${b.name}</b><span>${got[b.id]?'получено':b.need+' '+b.unit}</span></div>`).join('');
+  $('#badgeProg').innerHTML = [
+    ['Смен отработано', st.shifts], ['Часов отработано', st.hours],
+    ['Заработано', money(st.money)], ['Лучшая серия', st.streak + ' ' + plural(st.streak,'смена','смены','смен')]
+  ].map(([k,v]) => `<div class="br"><span>${k}</span><b>${v}</b></div>`).join('');
+}
+
 /* ─────────────── ЗАПУСК ─────────────── */
 function renderAll(){
   renderHome(); renderCal(); renderSched(); renderStats(); renderSet();
+  if($('#walls')) renderWalls();
+  if($('#calcValue')) renderCalc();
+  if($('#badges')) renderBadges();
 }
 function init(){
   initSplash(); initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
-  applyTheme();
+  initOnb(); initCalc(); applyTheme();
+  $$('[data-go]').forEach(b => b.onclick = () => { sound('tap'); openSub(b.dataset.go); });
+  $$('[data-back]').forEach(b => b.onclick = () => { sound('tap'); closeSub(); });
+  $$('#fsChips .chip').forEach(c => c.onclick = () => {
+    S.ui.fs = parseInt(c.dataset.fs); save(); applyFs(); sound('tap');
+  });
+  $$('#soundChips .chip').forEach(c => c.onclick = () => {
+    S.ui.sound = parseInt(c.dataset.sound); save();
+    $$('#soundChips .chip').forEach(x => x.classList.remove('on')); c.classList.add('on');
+    if(S.ui.sound) sound('tap');
+  });
+  $$('#themeChips .chip').forEach(c => c.onclick = () => {
+    S.ui.theme = c.dataset.theme; save(); applyTheme(); sound('tap');
+  });
   $('#abVer').textContent = '1.0';
   renderAll();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
