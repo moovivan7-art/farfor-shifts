@@ -51,7 +51,7 @@ body{
   background-size:cover; background-position:center top;
 }
 body::before{content:"";position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(16,17,22,.72),rgba(16,17,22,.96) 55%,rgba(16,17,22,.99));}
+  background:linear-gradient(180deg,rgba(16,17,22,.42),rgba(16,17,22,.86) 45%,rgba(16,17,22,.97));}
 h3{margin:0;font-size:17px;font-weight:800;letter-spacing:.2px}
 input,select,button{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -241,9 +241,9 @@ main{padding:18px 16px calc(var(--tb) + var(--sb) + 30px);max-width:660px;margin
   background:rgba(18,19,25,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border-top:1px solid rgba(255,255,255,.08);padding:8px 2px calc(8px + var(--sb))}
 .tabbar button{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--mut2);font-size:10px;font-weight:700;padding:4px 0;min-width:0}
-.tabbar button img{width:25px;height:25px;display:block;transition:transform .18s ease}
+.tabbar button svg{width:25px;height:25px;display:block;transition:transform .18s ease}
 .tabbar button.on{color:var(--acc2)}
-.tabbar button.on img{transform:translateY(-2px);filter:drop-shadow(0 4px 10px rgba(254,80,0,.55))}
+.tabbar button.on svg{transform:translateY(-2px);filter:drop-shadow(0 4px 10px rgba(254,80,0,.55))}
 
 /* ═══════════ ШТОРКА ═══════════ */
 .sheet-wrap{position:fixed;inset:0;z-index:60;display:none}
@@ -339,7 +339,7 @@ body[data-theme="light"]{
   --gold:#b8801a; --green:#1f9d55; --red:#d93b40; --blue:#1f6fd0;
   --txt:#15161a; --mut:#5a5f6a; --mut2:#868c98;
 }
-body[data-theme="light"]::before{background:linear-gradient(180deg,rgba(244,241,237,.75),rgba(244,241,237,.97) 50%,rgba(244,241,237,.99))}
+body[data-theme="light"]::before{background:linear-gradient(180deg,rgba(244,241,237,.45),rgba(244,241,237,.88) 45%,rgba(244,241,237,.97))}
 body[data-theme="light"] .topbar{background:rgba(255,255,255,.9)}
 body[data-theme="light"] .tabbar{background:rgba(255,255,255,.96)}
 body[data-theme="light"] .hero{background:linear-gradient(150deg,#fff,#faf7f3 60%,#f4efe8);border-color:var(--line2)}
