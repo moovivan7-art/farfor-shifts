@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Команда Фарфор — смены и зарплата</title>
+<title>Смена — учёт смен и зарплаты</title>
 <meta name="theme-color" content="#101116">
-<meta name="description" content="Учёт смен, часов и зарплаты для повара FARFOR. График 2-2, 3-3, 5-2, праздники, прогноз зарплаты, табель, награды.">
+<meta name="description" content="Смена — личный учёт смен, часов и зарплаты для повара FARFOR. PIN-вход, график 2-2, праздники, прогноз выплат, награды.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Команда Фарфор">
+<meta name="apple-mobile-web-app-title" content="Смена">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -27,6 +27,31 @@
   </div>
   <div class="splash-bar"><i></i></div>
   <button id="splashSkip" class="splash-skip">пропустить</button>
+</div>
+
+
+<!-- ══════════ ЭКРАН ВХОДА (PIN) ══════════ -->
+<div id="lock" class="lock">
+  <div class="lock-logo">
+    <svg viewBox="0 0 512 512">
+      <path d="M330 148a150 150 0 1 0 0 216" fill="none" stroke="#fe5000" stroke-width="59" stroke-linecap="round"/>
+      <path d="M330 148a150 150 0 0 1 32 38" fill="none" stroke="#ffc857" stroke-width="59" stroke-linecap="round"/>
+      <path d="M256 256V163" stroke="#fff" stroke-width="18" stroke-linecap="round"/>
+      <path d="M256 256l63 33" stroke="#fff" stroke-width="15" stroke-linecap="round"/>
+      <circle cx="256" cy="256" r="10" fill="#fff"/>
+      <circle cx="330" cy="148" r="15" fill="#ffc857"/>
+    </svg>
+  </div>
+  <h1 class="lock-title" id="lockTitle">Смена</h1>
+  <p class="lock-text" id="lockText">Введи PIN-код</p>
+  <div class="lock-name" id="lockNameWrap">
+    <input type="text" id="lockName" placeholder="Как тебя звать?" maxlength="24" autocomplete="given-name">
+  </div>
+  <input type="password" id="lockPin" class="lock-pin" inputmode="numeric" maxlength="6"
+         placeholder="• • • •" autocomplete="off">
+  <div class="lock-hint" id="lockHint"></div>
+  <button class="btn primary lock-go" id="lockGo">Войти</button>
+  <button class="btn ghost lock-reset" id="lockReset">Забыл код</button>
 </div>
 
 <!-- ══════════ ОНБОРДИНГ ══════════ -->
@@ -49,7 +74,7 @@
     </svg>
   </div>
   <div class="tb-txt">
-    <div class="tb-title" id="tbTitle">Команда Фарфор</div>
+    <div class="tb-title" id="tbTitle">Смена</div>
     <div class="tb-sub" id="tbSub">сегодня</div>
   </div>
   <div class="tb-rate"><span id="tbRate">—</span><small>₽/час</small></div>
@@ -260,6 +285,14 @@
         <div><label>Зарплата — какого числа</label>
           <select id="fPayday"><option value="10">10-е</option><option value="15">15-е</option><option value="20">20-е</option><option value="25">25-е</option><option value="31">31-е</option></select>
         </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Вход по PIN</h3><span class="pill" id="pinPill">выключен</span></div>
+      <p class="muted small">Приложение спросит код при запуске. Код хранится только на телефоне.</p>
+      <div class="quick">
+        <button class="qbtn" data-act="set-pin"><span class="qi">🔒</span>Задать код</button>
+        <button class="qbtn" data-act="off-pin"><span class="qi">🔓</span>Отключить код</button>
       </div>
     </div>
     <div class="card">
