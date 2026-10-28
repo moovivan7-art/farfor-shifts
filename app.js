@@ -44,9 +44,9 @@ const HOLIDAY_SETS = {
     short5: [], short6: []
   }
 };
-const holidayOff = d => HOLIDAY_SETS[d.slice(0,4)]?.off[d] || null;
+const holidayOff = d => (HOLIDAY_SETS[d.slice(0,4)] && HOLIDAY_SETS[d.slice(0,4)].off[d]) || null;
 const isHoliday  = d => !!holidayOff(d);
-const isShort    = (d, mode) => (HOLIDAY_SETS[d.slice(0,4)]?.[mode === '6' ? 'short6' : 'short5'] || []).includes(d);
+const isShort    = (d, mode) => { const y = HOLIDAY_SETS[d.slice(0,4)] || {}; const lst = (mode === '6' ? y.short6 : y.short5) || []; return lst.indexOf(d) >= 0; };
 
 /* ─────────────── ПАТТЕРНЫ ГРАФИКА ─────────────── */
 const PATTERNS = [
@@ -75,7 +75,7 @@ let S = load();
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(!raw) return structuredClone(DEFAULTS);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULTS));
     const p = JSON.parse(raw);
     return {
       profile: Object.assign({}, DEFAULTS.profile, p.profile || {}),
@@ -86,7 +86,7 @@ function load(){
       onboarded: !!p.onboarded,
       pin: p.pin || ''
     };
-  }catch(e){ return structuredClone(DEFAULTS); }
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULTS)); }
 }
 function applyTheme(){
   const t = (S.ui && S.ui.theme) || 'dark';
@@ -118,7 +118,7 @@ function save(){
   catch(e){ toast('Не удалось сохранить: нет места в памяти'); }
 }
 function resetAll(){
-  S = structuredClone(DEFAULTS); save(); renderAll(); toast('Всё сброшено');
+  S = JSON.parse(JSON.stringify(DEFAULTS)); save(); renderAll(); toast('Всё сброшено');
 }
 
 /* ─────────────── УТИЛИТЫ ─────────────── */
@@ -164,7 +164,7 @@ function slotList(){
   const p = S.profile;
   const h = shiftLen(p.shiftStart, p.shiftEnd);
   return SLOTS.map((sl, i) => i === 0
-    ? { ...sl, label: `${p.shiftStart||'10:00'}–${p.shiftEnd||'23:45'}`, hours: h ?? sl.hours }
+    ? { ...sl, label: `${p.shiftStart||'10:00'}–${p.shiftEnd||'23:45'}`, hours: (h === null || h === undefined) ? sl.hours : h }
     : sl);
 }
 const fmtHours = h => {
@@ -175,7 +175,7 @@ const getShift = d => S.shifts[d] || null;
 function shiftMoney(sh, date){
   if(!sh || sh.kind !== 'work') return 0;
   const d = date || '';
-  const base = (sh.rate ?? S.profile.rate) * (sh.hours || 0);
+  const base = ((sh.rate === null || sh.rate === undefined) ? S.profile.rate : sh.rate) * (sh.hours || 0);
   let add = 0;
   const slot = SLOTS.find(s => s.id === (sh.slot || 'day'));
   if(slot && slot.night) add += base * (S.profile.nightPct || 0) / 100;
@@ -234,10 +234,18 @@ function toast(msg){
 /* ─────────────── ЗАСТАВКА ─────────────── */
 function initSplash(){
   const sp = $('#splash');
-  const go = () => { sp.classList.add('hide'); setTimeout(() => sp.remove(), 500); };
-  $('#splashSkip').onclick = go;
-  sp.onclick = e => { if(e.target === sp) go(); };
-  setTimeout(go, 3900);
+  if(!sp) return;
+  let done = false;
+  const go = () => {
+    if(done) return; done = true;
+    sp.classList.add('hide');
+    setTimeout(() => { try{ sp.remove(); }catch(e){} }, 600);
+  };
+  $('#splashSkip').onclick = e => { e.stopPropagation(); go(); };
+  sp.onclick = go;                       // тап в любом месте — пропустить
+  setTimeout(go, 3900);                 // анимация 3,6 с + запас
+  setTimeout(go, 5200);                 // страховка: точно уйдёт
+  window.addEventListener('load', () => setTimeout(go, 4200));
 }
 
 /* ─────────────── ТАБЫ ─────────────── */
@@ -390,7 +398,7 @@ function renderCal(){
   const ym = `${calY}-${pad(calM+1)}`;
   const r = monthRange(ym);
   const s = rangeSum(r.from, r.to);
-  const holCount = Object.keys(HOLIDAY_SETS[ym.slice(0,4)]?.off || {}).filter(d => d.startsWith(ym)).length;
+  const holCount = Object.keys((HOLIDAY_SETS[ym.slice(0,4)] && HOLIDAY_SETS[ym.slice(0,4)].off) || {}).filter(d => d.startsWith(ym)).length;
   $('#calSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · ${s.hours} ч</span><span>Заработано: <b>${moneyShort(s.money)}</b></span><span>Праздников: <b>${holCount}</b></span>`;
 }
 function fillMonthByPattern(){
@@ -679,7 +687,7 @@ function initTab(){
     const v = prompt('Премия / доплата за ' + ym + ', ₽', cur.amount || 0);
     if(v == null) return;
     const amt = parseInt(v||0);
-    const note = prompt('За что (необязательно)', cur.note || '') ?? cur.note;
+    const nv = prompt('За что (необязательно)', cur.note || ''); const note = (nv === null || nv === undefined) ? cur.note : nv;
     if(amt) S.bonuses[ym] = { amount: amt, note: note || '' };
     else delete S.bonuses[ym];
     save(); renderAll(); toast(amt ? 'Премия добавлена' : 'Премия убрана');
@@ -933,11 +941,11 @@ function renderSet(){
   $('#fPoint').value = S.profile.point || '';
   $('#fPayday').value = String(S.profile.payday || 15);
   $('#fAdvance').value = String(S.profile.advance || 1);
-  $('#fNight').value = S.profile.nightPct ?? 0;
-  $('#fHol').value = S.profile.holPct ?? 0;
+  $('#fNight').value = (S.profile.nightPct === null || S.profile.nightPct === undefined) ? 0 : S.profile.nightPct;
+  $('#fHol').value = (S.profile.holPct === null || S.profile.holPct === undefined) ? 0 : S.profile.holPct;
   $('#abRate').textContent = (S.profile.rate || 0) + ' ₽';
   const pp = $('#pinPill'); if(pp){ pp.textContent = S.pin ? 'включён' : 'выключен'; pp.classList.toggle('on', !!S.pin); }
-  $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === (S.ui.sound ?? 1)));
+  $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === ((S.ui.sound === null || S.ui.sound === undefined) ? 1 : S.ui.sound)));
   $('#fShiftStart').value = S.profile.shiftStart || '10:00';
   $('#fShiftEnd').value = S.profile.shiftEnd || '23:45';
   applyTheme();
@@ -1241,6 +1249,10 @@ async function hashPin(pin){
 function initLock(){
   const el = $('#lock');
   const hasPin = !!(S.pin && S.pin.length);
+  if(!hasPin && S.profile.name){        // PIN отключён, приложение уже настроено — пускаем сразу
+    el.classList.remove('on');
+    return false;
+  }
   if(!hasPin){
     lockState = 'name';
     $('#lockTitle').textContent = APP_NAME;
@@ -1262,16 +1274,18 @@ function initLock(){
   $('#lockGo').onclick = lockGo;
   $('#lockReset').onclick = () => {
     if(confirm('Сбросить PIN и имя? Смены и деньги останутся на месте.')){
-      S.pin = ''; S.profile.name = ''; save();
+      S.pin = ''; save();
       lockState = 'name'; pinTmp = ''; pinTmp2 = '';
       $('#lockNameWrap').classList.add('on');
-      $('#lockText').textContent = 'Как тебя звать?';
+      $('#lockName').value = S.profile.name || '';
+      $('#lockText').textContent = S.profile.name ? ('Привет, ' + S.profile.name + '! Как зовут?') : 'Как тебя звать?';
       $('#lockGo').textContent = 'Дальше';
       $('#lockReset').style.display = 'none';
       $('#lockPin').value = '';
     }
   };
   setTimeout(() => { const f = lockState === 'name' ? $('#lockName') : $('#lockPin'); f.focus(); }, 350);
+  return true;
 }
 async function lockGo(){
   const name = $('#lockName').value.trim();
@@ -1313,6 +1327,7 @@ function unlockApp(){
   $('#tbTitle').textContent = APP_NAME;
   renderAll();
   toast('Привет, ' + (S.profile.name || 'повар') + '!');
+  setTimeout(initOnb, 400);            // обучение — только после входа
 }
 
 /* ─────────────── ЗАПУСК ─────────────── */
@@ -1323,9 +1338,11 @@ function renderAll(){
   if($('#badges')) renderBadges();
 }
 function init(){
+  initSplash();
   initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
-  initCalc(); applyTheme(); initLock();
-  setTimeout(initOnb, 300);
+  initCalc(); applyTheme();
+  const locked = initLock();
+  if(!locked) setTimeout(initOnb, 350);
   $$('[data-go]').forEach(b => b.onclick = () => { sound('tap'); openSub(b.dataset.go); });
   $$('[data-back]').forEach(b => b.onclick = () => { sound('tap'); closeSub(); });
   $$('#fsChips .chip').forEach(c => c.onclick = () => {
@@ -1339,7 +1356,7 @@ function init(){
   $$('#themeChips .chip').forEach(c => c.onclick = () => {
     S.ui.theme = c.dataset.theme; save(); applyTheme(); sound('tap');
   });
-  $('#abVer').textContent = '1.0';
+  $('#abVer').textContent = '1.3.1';
   renderAll();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
