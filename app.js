@@ -244,12 +244,9 @@ function initTabs(){
   $$('.tabbar button').forEach(b => b.onclick = () => {
     $$('.tabbar button').forEach(x => {
       x.classList.remove('on');
-      const im = x.querySelector('img');
-      if(im) im.src = `assets/icons/${x.dataset.tab}-off.png`;
     });
     b.classList.add('on');
-    const bim = b.querySelector('img');
-    if(bim) bim.src = `assets/icons/${b.dataset.tab}-on.png`;
+
     const v = b.dataset.tab;
     $$('.view').forEach(s => s.classList.toggle('on', s.id === 'view-' + v));
     window.scrollTo(0,0);
@@ -272,7 +269,7 @@ function renderHome(){
   $('#heroDate').textContent = now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
 
   const sh = getShift(ti);
-  $('#heroShift').textContent = sh ? (sh.kind === 'work' ? sh.hours + ' ч' : {off:'отдых', vacation:'отпуск'}[sh.kind] || '—') : 'не отмечена';
+  $('#heroShift').textContent = sh ? (sh.kind === 'work' ? fmtHours(sh.hours) : ({off:'отдых', vacation:'отпуск'}[sh.kind] || '—')) : 'не отмечена';
   $('#heroAmt').textContent = sh && sh.kind === 'work' ? money(shiftMoney(sh, ti)) : '0 ₽';
   $('#heroCap').textContent = sh && sh.kind === 'work' ? 'заработано сегодня' : (sh ? 'сегодня — выходной' : 'смену не отмечал');
 
