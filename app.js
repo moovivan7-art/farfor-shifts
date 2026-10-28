@@ -62,7 +62,7 @@ const PATTERNS = [
 
 /* ─────────────── ХРАНИЛИЩЕ ─────────────── */
 const DEFAULTS = {
-  profile: { name:'', rate:275, hours:13.75, point:'', payday:10,
+  profile: { name:'', rate:275, hours:13.75, point:'', advance:1, payday:15,
              nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45' },
   shifts: {},
   bonuses: {},
@@ -245,19 +245,16 @@ function renderHome(){
   $('#heroDate').textContent = now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
 
   const sh = getShift(ti);
-  $('#heroShift').textContent = sh ? (sh.kind === 'work' ? sh.hours + ' ч' : ({off:'отдых', vacation:'отпуск', sick:'больничный'})[sh.kind] || '—') : 'не отмечена';
+  $('#heroShift').textContent = sh ? (sh.kind === 'work' ? sh.hours + ' ч' : {off:'отдых', vacation:'отпуск'}[sh.kind] || '—') : 'не отмечена';
   $('#heroAmt').textContent = sh && sh.kind === 'work' ? money(shiftMoney(sh, ti)) : '0 ₽';
   $('#heroCap').textContent = sh && sh.kind === 'work' ? 'заработано сегодня' : (sh ? 'сегодня — выходной' : 'смену не отмечал');
 
   const m = monthRange(monthKey(ti));
   const ms = monthTotal(monthKey(ti));
   $('#heroMonth').textContent = moneyShort(ms.money);
-  const payDayN = (() => {
-    let pd = new Date(now.getFullYear(), now.getMonth(), S.profile.payday || 10);
-    if(pd < now) pd = new Date(now.getFullYear(), now.getMonth()+1, S.profile.payday || 10);
-    return Math.max(0, Math.ceil((pd - now) / 86400000));
-  })();
-  $('#heroLeft').textContent = payDayN + ' ' + plural(payDayN,'день','дня','дней');
+  const pays = payPeriods();
+  const near = pays[0], far = pays[1];
+  $('#heroLeft').textContent = near.days + ' ' + plural(near.days,'день','дня','дней');
   $('#stMonth').textContent = moneyShort(ms.money);
   $('#stWeek').textContent = moneyShort(rangeSum(iso(addDays(t,-6)), ti).money);
   const all = rangeSum('0000-01-01','9999-12-31');
@@ -266,24 +263,22 @@ function renderHome(){
   const target = Math.max(1, ms.money + (S.profile.rate||0) * (S.profile.hours||0) * 4);
   $('#heroBar').style.width = Math.min(100, ms.money / target * 100) + '%';
 
-  /* прогноз до зарплаты */
-  const payday = S.profile.payday || 10;
-  let payDate = new Date(now.getFullYear(), now.getMonth(), payday);
-  if (payDate < now) payDate = new Date(now.getFullYear(), now.getMonth()+1, payday);
-  const periodFrom = iso(new Date(payDate.getFullYear(), payDate.getMonth(), 1));
-  let fact = rangeSum(periodFrom, iso(addDays(payDate,-1))).money;
+  /* выплаты: аванс + зарплата (pays/near/far уже посчитаны выше) */
   const curYm = monthKey(ti);
-  if(periodFrom.slice(0,7) === curYm) fact += bonusOf(curYm);
-  const planned = plannedShifts(periodFrom, iso(payDate)).length;
-  const planMoney = planned * (S.profile.rate||0) * (S.plan.hours||12);
-  const total = fact + planMoney;
-  $('#fcFact').textContent = money(fact);
-  $('#fcPlan').textContent = money(planMoney) + ` (${planned} ${plural(planned,'смена','смены','смен')})`;
-  $('#fcTotal').textContent = money(total);
-  $('#fcBar').style.width = Math.min(100, (fact / Math.max(1,total)) * 100) + '%';
+  const dayWord = n => n + ' ' + plural(n,'день','дня','дней');
+  $('#fcLbl1').textContent = `${near.label} · через ${dayWord(near.days)}`;
+  $('#fcPay1').textContent = money(near.total);
+  $('#fcLbl2').textContent = `${far.label} · через ${dayWord(far.days)}`;
+  $('#fcPay2').textContent = money(far.total);
+  $('#fcLbl3').textContent = `Ближайшая выплата · ${near.label}`;
+  $('#fcTotal').textContent = money(near.total);
+  $('#fcBar').style.width = Math.min(100, (near.fact / Math.max(1, near.total)) * 100) + '%';
   const bo = bonusOf(curYm);
-  $('#fcNote').textContent = (bo ? `Премия за месяц: +${money(bo)}. ` : '') + `Зарплата ${payday}-го числа. До неё ${Math.max(0, Math.ceil((payDate - now)/86400000))} ${plural(Math.ceil((payDate-now)/86400000),'день','дня','дней')}.`;
-  $('#payPill').textContent = `зарплата ${payday}-го`;
+  $('#fcNote').textContent = (bo ? `Премия за месяц: +${money(bo)}. ` : '')
+    + `Аванс ${S.profile.advance||1}-го — за вторую половину прошлого месяца, `
+    + `зарплата ${S.profile.payday||15}-го — за первую половину этого.`
+    + (near.plan ? ` По графику до выплаты ещё ${near.plan} ${plural(near.plan,'смена','смены','смен')}.` : '');
+  $('#payPill').textContent = `аванс ${S.profile.advance||1}-го · зарплата ${S.profile.payday||15}-го`;
 
   /* серия смен подряд */
   let streak = 0;
@@ -524,20 +519,23 @@ function initSheet(){
 function makeReport(){
   const m = monthRange(monthKey(todayISO()));
   const s = rangeSum(m.from, m.to);
-  const kinds = { off:'выходной', vacation:'отпуск', sick:'больничный' };
+  const kinds = { off:'выходной', vacation:'отпуск' };
   const lines = Object.keys(S.shifts).filter(d => d >= m.from && d <= m.to).sort().map(d => {
     const sh = S.shifts[d];
     const dd = fromIso(d).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit' });
     if(sh.kind === 'work'){
       const sl = SLOTS.find(x => x.id === (sh.slot || 'day'));
-      return `• ${dd} — ${sh.hours} ч (${sl ? sl.label.split(' ')[0] : 'день'}) — ${money(shiftMoney(sh, d))}`;
+      return `• ${dd} — ${fmtHours(sh.hours)} (${sl ? sl.label : 'смена'}) — ${money(shiftMoney(sh, d))}`;
     }
     return `• ${dd} — ${kinds[sh.kind] || '—'}`;
   });
   const bo = bonusOf(monthKey(todayISO()));
   const head = `📋 Табель за ${fromIso(m.from).toLocaleDateString('ru-RU', { month:'long', year:'numeric' })}
 Смен: ${s.shifts} · часов: ${s.hours} · итого: ${money(s.money + bo)}${bo ? '\nПремия: ' + money(bo) : ''}`;
-  const tail = `Команда Фарфор · ${S.profile.point || 'FARFOR'}`;
+  const pays = payPeriods();
+  const tail = `Аванс ${pays.find(p=>p.kind==='advance').label.split(' ')[1]}: ${money(pays.find(p=>p.kind==='advance').total)}\n`
+    + `Зарплата ${pays.find(p=>p.kind==='salary').label.split(' ')[1]}: ${money(pays.find(p=>p.kind==='salary').total)}\n\n`
+    + `Команда Фарфор · ${S.profile.point || 'FARFOR'}`;
   const txt = [head, '', ...lines, '', tail].join('\n');
   showTextModal('Отчёт за месяц', txt);
   if(navigator.clipboard && navigator.clipboard.writeText)
@@ -552,7 +550,7 @@ function showTextModal(title, txt){
       <div><div class="sh-date"></div><div class="sh-hol"></div></div><button class="sh-x">✕</button></div>
       <pre class="txtbox"></pre><button class="btn primary txt-copy">Скопировать</button></div>`;
     document.body.appendChild(m);
-    m.querySelector('.sh-bg').onclick = () => m.classList.remove('on');
+    m.querySelector('.sheet-bg').onclick = () => m.classList.remove('on');
     m.querySelector('.sh-x').onclick = () => m.classList.remove('on');
     m.querySelector('.txt-copy').onclick = () => {
       navigator.clipboard.writeText(m.querySelector('.txtbox').textContent)
@@ -563,6 +561,45 @@ function showTextModal(title, txt){
   m.querySelector('.sh-hol').textContent = 'можно скопировать и отправить';
   m.querySelector('.txtbox').textContent = txt;
   m.classList.add('on');
+}
+
+/* ─────────────── ВЫПЛАТЫ: аванс 1-го, зарплата 15-го ─────────────── */
+function payPeriods(){
+  const now = today();
+  const advDay = S.profile.advance || 1;
+  const payDay = S.profile.payday || 15;
+  const dim = (y,m) => new Date(y, m+1, 0).getDate();
+  const mk = (y,m,d) => new Date(y, m, d);
+  const mkPay = (kind, date) => {
+    let from, to;
+    if(kind === 'salary'){                      // зарплата = за первую половину месяца
+      from = mk(date.getFullYear(), date.getMonth(), 1);
+      to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
+    }else{                                      // аванс = за вторую половину прошлого месяца
+      const y = date.getFullYear(), m = date.getMonth()-1;
+      from = mk(y, m, 16);
+      to   = mk(y, m, dim(y, m));
+    }
+    return { kind, date, from: iso(from), to: iso(to) };
+  };
+  let adv = mk(now.getFullYear(), now.getMonth(), advDay);
+  if(adv < now) adv = mk(now.getFullYear(), now.getMonth()+1, advDay);
+  let sal = mk(now.getFullYear(), now.getMonth(), payDay);
+  if(sal < now) sal = mk(now.getFullYear(), now.getMonth()+1, payDay);
+
+  const list = [ mkPay('salary', sal), mkPay('advance', adv) ].sort((a,b) => a.date - b.date);
+  const ti = todayISO();
+  list.forEach(p => {
+    p.days = Math.max(0, Math.round((p.date - now) / 86400000));
+    p.label = p.kind === 'salary' ? `Зарплата ${p.date.getDate()}-го` : `Аванс ${p.date.getDate()}-го`;
+    p.fact = rangeSum(p.from, p.to).money;
+    if(p.kind === 'salary' && monthKey(p.from) === monthKey(ti)) p.fact += bonusOf(monthKey(ti));
+    const future = plannedShifts(p.from, p.to).filter(d => d >= ti);
+    p.plan = future.length;
+    p.planMoney = future.length * (S.profile.rate || 0) * (S.plan.hours || S.profile.hours || 13.75);
+    p.total = p.fact + p.planMoney;
+  });
+  return list;
 }
 
 /* ─────────────── ТАБЕЛЬ ─────────────── */
@@ -596,10 +633,10 @@ function renderTab(){
     const sl = SLOTS.find(x => x.id === (sh.slot || 'day'));
     const right = sh.kind === 'work'
       ? `<div class="li-m">${moneyShort(shiftMoney(sh, d))}</div>`
-      : `<div class="li-m" style="color:var(--mut2)">${({off:'отдых', vacation:'отпуск', sick:'больничный'})[sh.kind] || ''}</div>`;
+      : `<div class="li-m" style="color:var(--mut2)">${{off:'отдых', vacation:'отпуск'}[sh.kind] || ''}</div>`;
     const mid = sh.kind === 'work'
       ? `<b>${sh.hours} ч${sh.bonus ? ' · +' + moneyShort(sh.bonus) : ''}</b><span>${sl ? sl.label : 'смена'}${sh.note ? ' · ' + sh.note : ''}${isHoliday(d) ? ' · 🎉' : ''}</span>`
-      : `<b>${({off:'Выходной', vacation:'Отпуск', sick:'Больничный'})[sh.kind] || '—'}</b><span>${sh.note || ''}</span>`;
+      : `<b>${({off:'Выходной', vacation:'Отпуск'})[sh.kind] || '—'}</b><span>${sh.note || ''}</span>`;
     return `<div class="li"><div class="li-d"><b>${dt.getDate()}</b><span>${WEEK[dt.getDay()]}</span></div>
       <div class="li-t">${mid}</div>${right}</div>`;
   }).join('') : '<div class="empty">Пока пусто</div>';
@@ -826,14 +863,14 @@ function renderStats(){
   $('#chartLine').innerHTML = l2;
 
   /* ── donut ── */
-  const kinds = { work:0, vacation:0, sick:0, off:0 };
+  const kinds = { work:0, vacation:0, off:0 };
   Object.entries(S.shifts).forEach(([d, sh]) => {
     if(d < b.from || d > b.to) return;
     if(kinds[sh.kind] != null) kinds[sh.kind]++;
   });
   const tot = Object.values(kinds).reduce((a,c) => a+c, 0);
-  const cols = { work:'#fe5000', vacation:'#4aa8ff', sick:'#ffc857', off:'#3a3f4b' };
-  const names = { work:'Смены', vacation:'Отпуск/больничный', sick:'Отпуск/больничный', off:'Отдых' };
+  const cols = { work:'#fe5000', vacation:'#4aa8ff', off:'#3a3f4b' };
+  const names = { work:'Смены', vacation:'Отпуск', off:'Отдых' };
   let ang = -Math.PI/2, segs = '';
   const R = 52, r = 33, cx = 60, cy = 60;
   if(tot > 0){
@@ -869,7 +906,8 @@ function renderSet(){
   $('#fRate').value = S.profile.rate || 0;
   $('#fHours').value = S.profile.hours || 12;
   $('#fPoint').value = S.profile.point || '';
-  $('#fPayday').value = String(S.profile.payday || 10);
+  $('#fPayday').value = String(S.profile.payday || 15);
+  $('#fAdvance').value = String(S.profile.advance || 1);
   $('#fNight').value = S.profile.nightPct ?? 0;
   $('#fHol').value = S.profile.holPct ?? 0;
   $('#fShiftStart').value = S.profile.shiftStart || '10:00';
@@ -891,7 +929,8 @@ function initSet(){
     el.onchange = () => { S.profile[key] = cast(el.value); save(); renderAll(); toast('Сохранено'); };
   };
   bind('#fName','name'); bind('#fRate','rate', v => parseInt(v||0)); bind('#fHours','hours', v => parseInt(v||1));
-  bind('#fPoint','point'); bind('#fPayday','payday', v => parseInt(v||10));
+  bind('#fPoint','point'); bind('#fPayday','payday', v => parseInt(v||15));
+  bind('#fAdvance','advance', v => parseInt(v||1));
   bind('#fNight','nightPct', v => parseInt(v||0)); bind('#fHol','holPct', v => parseInt(v||0));
   const syncTimes = () => {
     S.profile.shiftStart = $('#fShiftStart').value || '10:00';
