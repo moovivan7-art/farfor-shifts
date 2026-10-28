@@ -46,14 +46,14 @@ html,body{width:100vw;height:100vh;background:#0b0c0f;overflow:hidden;
   <div class="core"><i></i></div>
  </div>
  <div class="word" id="word"></div>
- <div class="sub" id="sub">КОМАНДА ФАРФОР</div>
+ <div class="sub" id="sub">FARFOR · УЧЁТ СМЕН</div>
  <div class="tag" id="tag">смены · часы · зарплата</div>
  <div class="bar"><i id="barfill"></i></div>
  <div class="skip" id="skip">пропустить</div>
 </div>
 <script>
 const word=document.getElementById('word');
-'FARFOR'.split('').forEach(c=>{const s=document.createElement('span');s.textContent=c;word.appendChild(s);});
+'СМЕНА'.split('').forEach(c=>{const s=document.createElement('span');s.textContent=c;word.appendChild(s);});
 const st=document.getElementById('steam');
 for(let i=0;i<10;i++){const p=document.createElement('i');
  p.style.left=(20+i*7)+'%'; p.style.animation=`rise 3.4s ease-in-out ${0.6+i*0.2}s infinite`; st.appendChild(p);}
