@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Команда Фарфор — смены и зарплата</title>
-<meta name="theme-color" content="#121317">
-<meta name="description" content="Учёт смен, часов и зарплаты для повара FARFOR. График 2-2, 3-3, 5-2, календарь праздников, прогноз зарплаты.">
+<meta name="theme-color" content="#101116">
+<meta name="description" content="Учёт смен, часов и зарплаты для повара FARFOR. График 2-2, 3-3, 5-2, праздники, прогноз зарплаты, табель, награды.">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="assets/icon-192.png">
+<link rel="icon" href="assets/icon.svg">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,22 +18,26 @@
 
 <!-- ══════════ ЗАСТАВКА ══════════ -->
 <div id="splash" class="splash">
-  <div class="splash-glow"></div>
-  <div class="splash-ring"><svg viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" cx="60" cy="60" r="52"/></svg></div>
-  <div class="splash-logo">
-    <span class="s-l">F</span><span class="s-l">A</span><span class="s-l">R</span><span class="s-l">F</span><span class="s-l">O</span><span class="s-l">R</span>
-  </div>
-  <div class="splash-sub">КОМАНДА&nbsp;ФАРФОР</div>
-  <div class="splash-line"><i></i></div>
-  <div class="splash-hint">смены · часы · зарплата</div>
+  <img class="splash-art" src="assets/splash.webp" alt="FARFOR — Команда Фарфор">
+  <div class="splash-bar"><i></i></div>
   <button id="splashSkip" class="splash-skip">пропустить</button>
+</div>
+
+<!-- ══════════ ОНБОРДИНГ ══════════ -->
+<div id="onb" class="onb">
+  <button id="onbSkip" class="onb-skip">Пропустить</button>
+  <img id="onbArt" class="onb-art" src="assets/art/kitchen.png" alt="">
+  <h2 id="onbTitle">Привет, повар</h2>
+  <p id="onbText">Здесь считаются твои смены, часы и деньги. Настроим за полминуты.</p>
+  <div class="onb-dots"><i class="on"></i><i></i><i></i></div>
+  <button id="onbNext" class="btn primary">Дальше</button>
 </div>
 
 <!-- ══════════ ШАПКА ══════════ -->
 <header class="topbar">
-  <div class="tb-mark" id="tbMark">
+  <div class="tb-mark">
     <svg viewBox="0 0 44 44" aria-hidden="true">
-      <circle cx="22" cy="22" r="20" fill="none" stroke="#fe5000" stroke-width="2.5" opacity=".35"/>
+      <circle cx="22" cy="22" r="20" fill="none" stroke="#fe5000" stroke-width="2.5" opacity=".4"/>
       <path d="M13 27.5c0-5.2 4-9 9-9s9 3.8 9 9" fill="none" stroke="#fe5000" stroke-width="2.5" stroke-linecap="round"/>
       <circle cx="22" cy="16" r="3" fill="#ffc857"/>
     </svg>
@@ -43,7 +47,7 @@
     <div class="tb-sub" id="tbSub">сегодня</div>
   </div>
   <div class="tb-rate"><span id="tbRate">—</span><small>₽/час</small></div>
-  <button class="tb-theme" id="themeBtn" title="Светлая / тёмная тема">☀</button>
+  <button class="tb-theme" id="themeBtn" title="Тема">☀</button>
 </header>
 
 <main id="app">
@@ -55,38 +59,38 @@
         <span class="hero-hi" id="heroHi">Привет</span>
         <span class="hero-date" id="heroDate"></span>
       </div>
-      <div class="hero-amt" id="heroAmt">0 ₽</div>
+      <div class="hero-amt num" id="heroAmt">0 ₽</div>
       <div class="hero-cap" id="heroCap">заработано сегодня</div>
       <div class="hero-bar"><i id="heroBar"></i></div>
       <div class="hero-foot">
         <div><b id="heroShift">—</b><span>смена сегодня</span></div>
         <div><b id="heroMonth">—</b><span>за месяц</span></div>
-        <div><b id="heroLeft">—</b><span>до зарплаты</span></div>
+        <div><b id="heroLeft">—</b><span>до выплаты</span></div>
       </div>
     </div>
 
     <div class="grid4">
-      <div class="stat"><b id="stWeek">0</b><span>за неделю, ₽</span></div>
-      <div class="stat"><b id="stMonth">0</b><span>за месяц, ₽</span></div>
-      <div class="stat"><b id="stAll">0</b><span>всего, ₽</span></div>
-      <div class="stat"><b id="stShifts">0</b><span>смен всего</span></div>
+      <div class="stat"><b class="num" id="stWeek">0</b><span>за неделю, ₽</span></div>
+      <div class="stat"><b class="num" id="stMonth">0</b><span>за месяц, ₽</span></div>
+      <div class="stat"><b class="num" id="stAll">0</b><span>всего, ₽</span></div>
+      <div class="stat"><b class="num" id="stShifts">0</b><span>смен всего</span></div>
     </div>
 
     <div class="grid2">
       <div class="card mini">
         <div class="mi-ic">🔥</div>
-        <b id="streakVal">0</b>
-        <span id="streakTxt">серия смен подряд</span>
+        <b class="num" id="streakVal">0</b>
+        <span id="streakTxt">смен подряд</span>
       </div>
       <div class="card mini">
         <div class="mi-ic">📈</div>
-        <b id="deltaVal">—</b>
+        <b class="num" id="deltaVal">—</b>
         <span id="deltaTxt">к прошлому месяцу</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-h"><h3>Прогноз: сколько получу</h3><span class="pill" id="payPill">зарплата 10-го</span></div>
+      <div class="card-h"><h3>Прогноз выплат</h3><span class="pill" id="payPill">аванс · зарплата</span></div>
       <div class="forecast">
         <div class="fc-row"><span id="fcLbl1">Зарплата</span><b id="fcPay1">—</b></div>
         <div class="fc-row"><span id="fcLbl2">Аванс</span><b id="fcPay2">—</b></div>
@@ -100,9 +104,9 @@
       <div class="card-h"><h3>Быстрые действия</h3></div>
       <div class="quick">
         <button class="qbtn" data-act="mark-today"><span class="qi">✓</span>Отметить смену</button>
-        <button class="qbtn" data-act="open-sched"><span class="qi">▤</span>График 2-2</button>
-        <button class="qbtn" data-act="open-bonus"><span class="qi">₽</span>Чаевые / премия</button>
-        <button class="qbtn" data-act="make-report"><span class="qi">⎙</span>Отчёт текстом</button>
+        <button class="qbtn" data-act="open-sched"><span class="qi">▤</span>График</button>
+        <button class="qbtn" data-act="open-bonus"><span class="qi">₽</span>Чаевые</button>
+        <button class="qbtn" data-act="make-report"><span class="qi">⎙</span>Отчёт</button>
       </div>
     </div>
 
@@ -125,7 +129,7 @@
       <div class="cal-legend">
         <span><i class="lg lg-work"></i>смена</span>
         <span><i class="lg lg-off"></i>отдых</span>
-        <span><i class="lg lg-vac"></i>отпуск/больничный</span>
+        <span><i class="lg lg-vac"></i>отпуск</span>
         <span><i class="lg lg-hol"></i>праздник</span>
       </div>
       <div class="cal-sum" id="calSum"></div>
@@ -146,9 +150,7 @@
     <div class="card">
       <div class="card-h"><h3>Настройки графика</h3></div>
       <div class="field"><label>Начало отсчёта</label><input type="date" id="schedStart"></div>
-      <div class="field"><label>Часов в смене</label>
-        <div class="chips" id="schedHours"></div>
-      </div>
+      <div class="field"><label>Часов в смене</label><div class="chips" id="schedHours"></div></div>
       <div class="field"><label>Предпраздничный день</label>
         <select id="schedShort">
           <option value="6">Минус 1 час (шестидневка)</option>
@@ -168,21 +170,21 @@
   <section class="view" id="view-tab">
     <div class="card">
       <div class="card-h"><h3>Табель</h3>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:7px">
           <button class="nav" data-tab-range="prev">‹</button>
           <button class="nav" data-tab-range="next">›</button>
         </div>
       </div>
-      <button class="btn ghost" data-act="add-bonus" style="width:100%;margin-bottom:12px">+ Премия за месяц (бонус, доплата)</button>
-      <div id="bonusLine"></div>
       <div class="seg" id="tabSeg">
         <button data-tr="month" class="on">Месяц</button>
         <button data-tr="q">3 мес</button>
         <button data-tr="all">Всё</button>
       </div>
-      <div id="tabTitle" class="muted small" style="margin-bottom:8px"></div>
+      <button class="btn ghost" data-act="add-bonus" style="width:100%;margin-bottom:12px">+ Премия за месяц (бонус, доплата)</button>
+      <div id="bonusLine"></div>
+      <div id="tabTitle" class="muted small" style="margin-bottom:10px;font-weight:600"></div>
       <div id="tabList" class="list"></div>
-      <div class="cal-sum" id="tabSum" style="margin-top:12px"></div>
+      <div class="cal-sum" id="tabSum" style="margin-top:14px"></div>
     </div>
   </section>
 
@@ -209,79 +211,199 @@
     </div>
   </section>
 
-  <!-- ══════════ НАСТРОЙКИ ══════════ -->
+  <!-- ══════════ ЕЩЁ (хаб) ══════════ -->
   <section class="view" id="view-set">
     <div class="card">
-      <div class="card-h"><h3>Профиль</h3></div>
+      <div class="card-h"><h3>Ещё</h3><span class="pill" id="setPill">v1.2</span></div>
+      <div class="list">
+        <button class="li" data-go="profile"><div class="li-d">👤</div><div class="li-t"><b>Профиль</b><span>имя, ставка, смена, зарплата</span></div><div class="li-m">›</div></button>
+        <button class="li" data-go="theme"><div class="li-d">🎨</div><div class="li-t"><b>Тема и обои</b><span>светлая/тёмная, 10 фонов</span></div><div class="li-m">›</div></button>
+        <button class="li" data-go="calc"><div class="li-d">🧮</div><div class="li-t"><b>Расчёты</b><span>за месяц, за год, за отпуск</span></div><div class="li-m">›</div></button>
+        <button class="li" data-go="badges"><div class="li-d">🏅</div><div class="li-t"><b>Награды</b><span>за смены, часы и деньги</span></div><div class="li-m">›</div></button>
+        <button class="li" data-go="guide"><div class="li-d">📖</div><div class="li-t"><b>Как считать</b><span>инструкция и формулы</span></div><div class="li-m">›</div></button>
+        <button class="li" data-go="data"><div class="li-d">💾</div><div class="li-t"><b>Данные</b><span>экспорт, импорт, сброс</span></div><div class="li-m">›</div></button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>О приложении</h3></div>
+      <div class="about">
+        <div class="ab-row"><span>Версия</span><b id="abVer">1.2</b></div>
+        <div class="ab-row"><span>Бренд</span><b>FARFOR</b></div>
+        <div class="ab-row"><span>Записей в базе</span><b id="abCount">0</b></div>
+        <div class="ab-row"><span>Ставка по умолчанию</span><b id="abRate">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ПРОФИЛЬ ══════════ -->
+  <section class="view" id="view-profile">
+    <div class="card">
+      <div class="card-h"><h3>Профиль</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
       <div class="field"><label>Как тебя звать</label><input type="text" id="fName" placeholder="Повар"></div>
-      <div class="field"><label>Часовая ставка, ₽</label><input type="number" id="fRate" inputmode="numeric" min="0" step="10"></div>
       <div class="field row2">
         <div><label>Смена с</label><input type="time" id="fShiftStart" value="10:00"></div>
         <div><label>Смена до</label><input type="time" id="fShiftEnd" value="23:45"></div>
       </div>
+      <div class="field"><label>Часовая ставка, ₽</label><input type="number" id="fRate" inputmode="numeric" min="0" step="10"></div>
       <div class="field"><label>Часов в смене по умолчанию</label><input type="number" id="fHours" inputmode="decimal" min="1" max="24" step="0.25"></div>
       <div class="field"><label>Точка / ресторан</label><input type="text" id="fPoint" placeholder="Уфа, Айская"></div>
       <div class="field row2">
         <div><label>Аванс — какого числа</label>
-          <select id="fAdvance">
-            <option value="1">1-е</option><option value="5">5-е</option>
-            <option value="10">10-е</option><option value="15">15-е</option>
-          </select>
+          <select id="fAdvance"><option value="1">1-е</option><option value="5">5-е</option><option value="10">10-е</option><option value="15">15-е</option></select>
         </div>
         <div><label>Зарплата — какого числа</label>
-          <select id="fPayday">
-            <option value="10">10-е</option><option value="15">15-е</option>
-            <option value="20">20-е</option><option value="25">25-е</option>
-            <option value="31">31-е</option>
-          </select>
+          <select id="fPayday"><option value="10">10-е</option><option value="15">15-е</option><option value="20">20-е</option><option value="25">25-е</option><option value="31">31-е</option></select>
         </div>
       </div>
     </div>
     <div class="card">
       <div class="card-h"><h3>Доплаты</h3></div>
-      <p class="muted small">У тебя по умолчанию 275 ₽/час и смена 10:00–23:45 без доплат. Ночные и праздничные — на твоё усмотрение, бонусы можно приплюсовать в конце месяца через «Премию за месяц» в Табеле.</p>
+      <p class="muted small">У тебя по умолчанию 275 ₽/час и смена 10:00–23:45 без доплат. Ночные и праздничные — на твоё усмотрение.</p>
       <div class="field row2">
         <div><label>Ночная смена, +%</label><input type="number" id="fNight" inputmode="numeric" min="0" max="200" step="5"></div>
         <div><label>Праздник, +%</label><input type="number" id="fHol" inputmode="numeric" min="0" max="300" step="10"></div>
       </div>
-      <div class="field"><label>Тема</label>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Размер текста</h3></div>
+      <div class="chips" id="fsChips">
+        <button class="chip" data-fs="16">Обычный</button>
+        <button class="chip" data-fs="17">Крупный</button>
+        <button class="chip" data-fs="19">Очень крупный</button>
+      </div>
+      <div class="field" style="margin-top:16px"><label>Звуки</label>
+        <div class="chips" id="soundChips">
+          <button class="chip on" data-sound="1">🔊 Включены</button>
+          <button class="chip" data-sound="0">🔇 Выключены</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ТЕМА И ОБОИ ══════════ -->
+  <section class="view" id="view-theme">
+    <div class="card">
+      <div class="card-h"><h3>Тема и обои</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
+      <div class="field"><label>Оформление</label>
         <div class="chips" id="themeChips">
           <button class="chip on" data-theme="dark">🌙 Тёмная</button>
           <button class="chip" data-theme="light">☀ Светлая</button>
         </div>
       </div>
+      <div class="field"><label>Фон приложения</label><div class="walls" id="walls"></div></div>
+      <p class="muted small">Фоны — 4K, весят много. Если телефон тормозит — выбери тёмную тему без обоев.</p>
+    </div>
+  </section>
+
+  <!-- ══════════ РАСЧЁТЫ ══════════ -->
+  <section class="view" id="view-calc">
+    <div class="card">
+      <div class="card-h"><h3>Расчёты</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
+      <div class="field"><label>Что считаем</label>
+        <div class="chips" id="calcChips">
+          <button class="chip on" data-calc="month">За месяц</button>
+          <button class="chip" data-calc="year">За год</button>
+          <button class="chip" data-calc="vac">За отпуск</button>
+          <button class="chip" data-calc="hour">Сколько часов на 10 000 ₽</button>
+        </div>
+      </div>
+      <div class="field" id="calcVacField" style="display:none"><label>Дней отпуска</label>
+        <input type="number" id="calcVacDays" value="14" min="1" max="90" step="1">
+      </div>
+      <div class="calc-out"><b id="calcValue">—</b><span id="calcLabel"></span></div>
+      <div id="calcBreak" class="break"></div>
     </div>
     <div class="card">
-      <div class="card-h"><h3>Данные</h3></div>
+      <div class="card-h"><h3>Сколько смен в месяц</h3></div>
+      <div id="calcShifts" class="break"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ НАГРАДЫ ══════════ -->
+  <section class="view" id="view-badges">
+    <div class="card">
+      <div class="card-h"><h3>Награды</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
+      <div class="badges" id="badges"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Прогресс</h3></div>
+      <div id="badgeProg" class="break"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ СПРАВКА ══════════ -->
+  <section class="view" id="view-guide">
+    <div class="card">
+      <div class="card-h"><h3>Как считать</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
+      <div class="guide">
+        <img class="guide-art" src="assets/art/money.png" alt="">
+        <h4>Формула</h4>
+        <p><b>смена = часы × ставка</b></p>
+        <p>С твоими настройками: 13 ч 45 мин × 275 ₽ = <b>3 781 ₽</b> за смену.</p>
+        <p>Дальше прибавляется:
+          <b>ночная надбавка</b> (если включишь), <b>праздничная надбавка</b>,
+          <b>чаевые</b> прямо в смене и <b>премия за месяц</b> из Табеля.</p>
+        <img class="guide-art" src="assets/art/calendar.png" alt="">
+        <h4>Выплаты</h4>
+        <ul>
+          <li><b>Аванс 1-го</b> — за вторую половину прошлого месяца (с 16-го)</li>
+          <li><b>Зарплата 15-го</b> — за первую половину этого месяца (с 1-го по 15-е)</li>
+          <li>В прогноз входит и то, что ещё не отработано — но по твоему графику</li>
+        </ul>
+        <img class="guide-art" src="assets/art/clock.png" alt="">
+        <h4>Праздники 2026</h4>
+        <ul>
+          <li>Новогодние каникулы — 31.12–11.01</li>
+          <li>День защитника Отечества — 21–23.02</li>
+          <li>8 Марта — 7–9.03</li>
+          <li>Праздник Весны и Труда — 1–3.05</li>
+          <li>День Победы — 9–11.05</li>
+          <li>День России — 12–14.06</li>
+          <li>День народного единства — 4.11</li>
+        </ul>
+        <p><b>Предпраздничные дни</b> (на час короче): 30.04, 8.05, 11.06, 3.11 и 7.03 для шестидневки.
+        Приложение само предлагает минус час.</p>
+        <img class="guide-art" src="assets/splash.gif" alt="заставка приложения">
+        <h4>Заставка</h4>
+        <p>Эту анимацию можно сохранить себе — <a href="assets/splash.gif" download="farfor-splash.gif"
+           style="color:var(--acc2);font-weight:700">скачать GIF</a> (3,6 сек).</p>
+        <h4>Если ушёл раньше</h4>
+        <p>В шторке дня есть поле «ч фактически отработал» — впиши реальные часы,
+        сумма пересчитается. Например, 9,5 ч × 275 ₽ = <b>2 613 ₽</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ДАННЫЕ ══════════ -->
+  <section class="view" id="view-data">
+    <div class="card">
+      <div class="card-h"><h3>Данные</h3><button class="btn ghost" data-back="1" style="padding:8px 14px">← Назад</button></div>
       <p class="muted small">Всё хранится только на телефоне. Никуда не отправляется.</p>
       <div class="quick">
         <button class="qbtn" data-act="exp-json"><span class="qi">↓</span>Экспорт JSON</button>
         <button class="qbtn" data-act="exp-csv"><span class="qi">↓</span>Экспорт CSV</button>
         <button class="qbtn" data-act="imp-json"><span class="qi">↑</span>Импорт JSON</button>
-        <button class="qbtn" data-act="copy-backup"><span class="qi">⧉</span>Копировать в буфер</button>
+        <button class="qbtn" data-act="copy-backup"><span class="qi">⧉</span>В буфер обмена</button>
       </div>
       <input type="file" id="impFile" accept=".json,application/json" hidden>
     </div>
     <div class="card">
-      <div class="card-h"><h3>Приложение</h3></div>
-      <div class="about">
-        <div class="ab-row"><span>Версия</span><b id="abVer">1.0</b></div>
-        <div class="ab-row"><span>Бренд</span><b>FARFOR</b></div>
-        <div class="ab-row"><span>Данных в базе</span><b id="abCount">0</b></div>
-      </div>
+      <div class="card-h"><h3>Сброс</h3></div>
+      <p class="muted small">Удаляет все смены и настройки. Действие необратимо — сначала сделай экспорт.</p>
       <button class="btn danger" data-act="reset">Сбросить всё</button>
     </div>
   </section>
+
 </main>
 
 <!-- ══════════ НИЖНЕЕ МЕНЮ ══════════ -->
 <nav class="tabbar">
-  <button data-tab="home" class="on"><span class="ti">◉</span>Сегодня</button>
-  <button data-tab="cal"><span class="ti">▦</span>Календарь</button>
-  <button data-tab="sched"><span class="ti">▤</span>График</button>
-  <button data-tab="tab"><span class="ti">☰</span>Табель</button>
-  <button data-tab="stats"><span class="ti">◔</span>Стат.</button>
-  <button data-tab="set"><span class="ti">⚙</span>Ещё</button>
+  <button data-tab="home" class="on"><img src="assets/icons/home-on.png" alt=""><span>Сегодня</span></button>
+  <button data-tab="cal"><img src="assets/icons/calendar-off.png" alt=""><span>Календарь</span></button>
+  <button data-tab="sched"><img src="assets/icons/schedule-off.png" alt=""><span>График</span></button>
+  <button data-tab="tab"><img src="assets/icons/table-off.png" alt=""><span>Табель</span></button>
+  <button data-tab="stats"><img src="assets/icons/chart-off.png" alt=""><span>Стат.</span></button>
+  <button data-tab="set"><img src="assets/icons/settings-off.png" alt=""><span>Ещё</span></button>
 </nav>
 
 <!-- ══════════ ШТОРКА ДНЯ ══════════ -->
@@ -310,9 +432,7 @@
           <span>ч фактически отработал</span>
         </div>
       </div>
-      <div class="field" id="slotField"><label>Время смены</label>
-        <div class="chips" id="slotChips"></div>
-      </div>
+      <div class="field" id="slotField"><label>Время смены</label><div class="chips" id="slotChips"></div></div>
       <div class="field" id="shortField"><label>Предпраздничный день</label>
         <div class="chips" id="shortChips">
           <button class="chip on" data-short="1">Минус 1 час</button>
@@ -334,7 +454,6 @@
 </div>
 
 <div id="toast" class="toast"></div>
-
 <script src="app.js"></script>
 </body>
 </html>
