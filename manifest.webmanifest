@@ -1,13 +1,13 @@
 {
-  "name": "Команда Фарфор — смены и зарплата",
-  "short_name": "Команда Фарфор",
-  "description": "Учёт смен, часов, чаевых и зарплаты для повара FARFOR. График 2-2, 3-3, 5-2, календарь праздников, прогноз зарплаты, табель.",
+  "name": "Смена — учёт смен и зарплаты",
+  "short_name": "Смена",
+  "description": "Личный учёт смен, часов и зарплаты для повара FARFOR. PIN-вход, график 2-2, праздники, прогноз выплат, награды.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0b0c0f",
-  "theme_color": "#121317",
+  "theme_color": "#101116",
   "lang": "ru",
   "dir": "ltr",
   "categories": [

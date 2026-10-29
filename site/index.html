@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Смена — учёт смен, часов и денег для своих</title>
+<meta name="description" content="Смена — личное приложение для поваров, курьеров и сборщиков: любой график, двойные смены, аванс и зарплата сразу, доплаты списком, напарник вдвоём. Без аккаунтов, всё хранится на телефоне.">
+<meta name="theme-color" content="#08090c">
+<meta property="og:title" content="Смена — учёт смен, часов и денег">
+<meta property="og:description" content="Приложение, которое считает твои смены, часы и деньги. Сделано для своих.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="bg"><i class="orb a"></i><i class="orb b"></i><i class="orb c"></i></div>
+
+<!-- ══════════ ШАПКА ══════════ -->
+<header class="top">
+  <div class="wrap">
+    <div class="logo">
+      <span class="mk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+          <path d="M16.5 7.4a6 6 0 1 0 0 9.2"/><path d="M16.5 7.4l1.3 1.5"/>
+          <path d="M12 12V9.5"/><path d="M12 12l3.1 1.6"/>
+        </svg>
+      </span>
+      Смена
+    </div>
+    <nav>
+      <a href="#features">Что внутри</a>
+      <a href="#builder">Собрать график</a>
+      <a href="#money">Как считаются деньги</a>
+      <a href="#download">Скачать</a>
+      <a href="#support">Поддержка</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ══════════ ГЕРОЙ ══════════ -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow"><i></i> личный проект · сделано для своих</div>
+      <h1>Считает твои<br><span class="o">смены и деньги</span></h1>
+      <p class="lead">Приложение для поваров, курьеров и сборщиков: отметил смену — сразу видно часы,
+        зарплату, аванс и премию. Без аккаунтов и без сервера: всё хранится на твоём телефоне.</p>
+      <div class="cta">
+        <button class="btn p" data-gate="dl">⬇ Скачать APK</button>
+        <a class="btn g" href="#builder">▤ Собрать график</a>
+        <a class="btn g" id="repoBtn" href="#" target="_blank" rel="noopener">⌘ Исходники на GitHub</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>0</b><span>аккаунтов и паролей</span></div>
+        <div class="stat"><b>6</b><span>экранов</span></div>
+        <div class="stat"><b>24 МБ</b><span>APK, работает офлайн</span></div>
+        <div class="stat"><b>40%</b><span>аванс — видно сразу</span></div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="glow"></div>
+      <div class="frame">
+        <div class="screen">
+          <img src="assets/hero.gif" alt="Приложение Смена — экран с расчётом смены" loading="eager">
+        </div>
+      </div>
+      <div class="badge">13 ч 45 мин · 3 781 ₽</div>
+      <div class="badge b2">аванс 1-го</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ЧТО ВНУТРИ ══════════ -->
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="kicker">Что внутри</div>
+      <h2>Всё, что нужно считать деньги<br>на сменах</h2>
+      <p class="sub">Никаких «табелей из бумажки» и «помни, сколько в прошлый раз работал».</p>
+    </div>
+    <div class="fgrid">
+      <article class="f rv"><div class="ic">▤</div><h3>Любой график</h3>
+        <p>1/1, 2/2, 3/3 — или «лесенка» 1-1-2-2-3-3, где смены всё равно считаются по деньгам.</p>
+        <span class="tag">свой цикл</span></article>
+      <article class="f rv"><div class="ic">⧉</div><h3>Двойные смены</h3>
+        <p>Два окна в день: утро и вечер. Часы, ставка и сумма считаются по каждому окну отдельно.</p>
+        <span class="tag">окон в день</span></article>
+      <article class="f rv"><div class="ic">₽</div><h3>Аванс и зарплата</h3>
+        <p>Аванс 1-го, зарплата 15-го. Приложение сразу покажет, сколько придёт к каждой выплате.</p>
+        <span class="tag">прогноз</span></article>
+      <article class="f rv"><div class="ic">%</div><h3>Правило 40%</h3>
+        <p>Из заработка за первые 20 дней 40% уходит в аванс, остальное — в премию. Цифры видны сразу.</p>
+        <span class="tag">разбивка</span></article>
+      <article class="f rv"><div class="ic">＋</div><h3>Доплаты списком</h3>
+        <p>+10 за план, +10 за скорость, чаевые, премия — всё складывается в одну сумму, а не теряется.</p>
+        <span class="tag">мелочи, которые решают</span></article>
+      <article class="f rv"><div class="ic">−</div><h3>Штрафы и списания</h3>
+        <p>Прилетел штраф или удержали — запиши. Видно, сколько заработал и сколько забрали.</p>
+        <span class="tag">не теряется</span></article>
+      <article class="f rv"><div class="ic">👥</div><h3>Напарник вдвоём</h3>
+        <p>Смену делите с коллегой? У каждого свои часы и свои деньги. Видно, кто сколько отработал.</p>
+        <span class="tag">бригада</span></article>
+      <article class="f rv"><div class="ic">⧉</div><h3>Копии</h3>
+        <p>Отметил смену — раскидал на две недели вперёд. Месяц копируется в следующий целиком.</p>
+        <span class="tag">меньше рутины</span></article>
+      <article class="f rv"><div class="ic">🔗</div><h3>Ссылка на график</h3>
+        <p>Скинул ссылку шефу — он видит твой месяц. Или отчёт текстом в мессенджер.</p>
+        <span class="tag">поделиться</span></article>
+      <article class="f rv"><div class="ic">📆</div><h3>Календарь (.ics)</h3>
+        <p>Выгрузка смен в календарь телефона — со временем и точкой, чтобы не сверяться с бумажкой.</p>
+        <span class="tag">экспорт</span></article>
+      <article class="f rv"><div class="ic">🎉</div><h3>Праздники РФ</h3>
+        <p>Производственный календарь на 2026: праздники и предпраздничные дни на час короче.</p>
+        <span class="tag">не считать вручную</span></article>
+      <article class="f rv"><div class="ic">🔒</div><h3>Вход по коду</h3>
+        <p>Код 4–6 цифр на телефоне. Забыл — смены и деньги остаются на месте, стирается только код.</p>
+        <span class="tag">приватно</span></article>
+      <article class="f rv"><div class="ic">📊</div><h3>Своя статистика</h3>
+        <p>Заработок по дням, факт против графика, лучшая смена, серия смен подряд и награды.</p>
+        <span class="tag">понятно</span></article>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ КОНСТРУКТОР ГРАФИКА ══════════ -->
+<section id="builder">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="kicker">Конструктор</div>
+      <h2>Собери свой график<br>прямо здесь</h2>
+      <p class="sub">Та же математика, что в приложении: сколько смен, сколько часов, сколько денег
+        и как это делится на аванс и премию. Можно прямо на сайте.</p>
+    </div>
+    <div class="calc">
+      <div class="panel glass rv">
+        <h3>Настройки</h3>
+        <p class="mut2" style="font-size:14px;margin:6px 0 20px">Выбери ритм или напиши свой: работа/отдых через запятую.</p>
+
+        <div class="fld">
+          <label>Готовые циклы</label>
+          <div class="chips" id="cycChips"></div>
+        </div>
+        <div class="fld">
+          <label>Свой цикл</label>
+          <div style="display:flex;gap:10px">
+            <input class="inp" id="cycInput" placeholder="1/1, 2/2, 3/3" maxlength="60">
+            <button class="btn p s" id="cycApply">Ок</button>
+          </div>
+        </div>
+        <div class="fld">
+          <label>Окон в день</label>
+          <div class="chips" id="spdChips">
+            <button class="chip" data-spd="1">1 окно</button>
+            <button class="chip" data-spd="2">2 окна</button>
+            <button class="chip" data-spd="3">3 окна</button>
+          </div>
+        </div>
+        <div class="fld row2">
+          <div><label>Начало</label><input class="inp" type="date" id="startDate"></div>
+          <div><label>Ставка, ₽/час</label><input class="inp" type="number" id="rate" min="0" step="10"></div>
+        </div>
+        <div class="fld row2">
+          <div><label>Часов в смене</label><input class="inp" type="number" id="hours" min="1" max="24" step="0.25"></div>
+          <div><label>Аванс, % от первых <span id="advDaysLbl">20</span> дней</label><input class="inp" type="number" id="advPct" min="0" max="100" step="5"></div>
+        </div>
+        <div class="fld">
+          <label>Вдвоём с напарником</label>
+          <div class="sw" id="mateSw"><span class="track"></span><span>Считать второго человека</span></div>
+        </div>
+        <div class="fld" id="mateRow" style="display:none">
+          <label>Ставка напарника, ₽/час</label>
+          <input class="inp" type="number" id="mateRate" min="0" step="10" value="275">
+        </div>
+      </div>
+
+      <div class="panel glass rv">
+        <h3 id="monthTitle">—</h3>
+        <div class="mgrid" id="monthGrid"></div>
+        <div class="sum" id="sum"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+          <button class="btn p s" id="copyBtn">⧉ Скопировать расчёт</button>
+          <button class="btn g s" id="dlBtn2">⬇ Скачать приложение</button>
+        </div>
+        <p class="note" id="calcNote"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ДЕНЬГИ ══════════ -->
+<section id="money">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="kicker">Формулы</div>
+      <h2>Как считаются деньги</h2>
+      <p class="sub">Без чёрных ящиков: четыре строчки — и ты знаешь, что придёт.</p>
+    </div>
+    <div class="money">
+      <div class="panel glass rv">
+        <h3 style="margin-bottom:6px">Смена</h3>
+        <div class="formula">смена = часы × ставка</div>
+        <p class="mut" style="font-size:15px">13 ч 45 мин × 275 ₽ = <b style="color:var(--txt)">3 781 ₽</b> за смену.
+          Часы дробные — минуты не срезаются.</p>
+        <h3 style="margin:22px 0 6px">Месяц</h3>
+        <div class="formula">месяц = сумма смен + доплаты</div>
+        <p class="mut" style="font-size:15px">Доплаты копятся списком: +10 за план, +10 за скорость,
+          чаевые — и всё это в одной сумме.</p>
+        <h3 style="margin:22px 0 6px">Аванс и премия</h3>
+        <div class="formula">аванс = 40% от первых 20 дней</div>
+        <p class="mut" style="font-size:15px">Остальное из первых 20 дней — в премию и выплачивается
+          вместе с зарплатой. Процент и размер окна меняются в настройках.</p>
+      </div>
+      <div class="panel glass rv">
+        <h3 style="margin-bottom:6px">Пример: 10 смен за первые 20 дней</h3>
+        <div class="ex">
+          <div class="c"><b>37 813 ₽</b><span>заработано в окне</span></div>
+          <div class="c acc"><b>15 125 ₽</b><span>аванс (40%)</span></div>
+          <div class="c gold"><b>22 688 ₽</b><span>премия (60%)</span></div>
+          <div class="c"><b>1-го / 15-го</b><span>когда платят</span></div>
+        </div>
+        <p class="note">Пример для ставки 275 ₽/час и смены 13 ч 45 мин. Твои ставка, часы,
+          даты выплат и процент аванса меняются в настройках приложения.</p>
+        <h3 style="margin:24px 0 6px">Если смена вдвоём</h3>
+        <div class="formula">часы каждого = свои окна</div>
+        <p class="mut" style="font-size:15px">Если вы с напарником закрываете точку вместе, отмечаете
+          две смены в один день: у каждого свои часы, своя ставка и своя сумма. Общая сумма точки
+          тоже видна.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ СКАЧАТЬ ══════════ -->
+<section id="download">
+  <div class="wrap">
+    <div class="shared rv" id="sharedBox">
+      <h3 id="sharedTitle">График</h3>
+      <p class="mut" id="sharedText" style="font-size:15px"></p>
+      <div class="mgrid" id="sharedGrid" style="max-width:420px"></div>
+    </div>
+    <div class="sec-head rv">
+      <div class="kicker">Скачать</div>
+      <h2>Приложение для Android</h2>
+      <p class="sub">Один файл, без регистрации. Ставится за десять секунд.</p>
+    </div>
+    <div class="dl">
+      <div class="art rv"><img src="assets/demo.gif" alt="Как работает приложение Смена" loading="lazy"></div>
+      <div class="panel glass rv">
+        <div class="steps">
+          <div class="step"><span><b>Скачай APK</b> — по коду приглашения, который пришлёт автор.</span></div>
+          <div class="step"><span><b>Разреши установку</b> из «Файлов» или «Браузера».</span></div>
+          <div class="step"><span><b>Введи имя и код</b> 4–6 цифр — это твой личный вход.</span></div>
+          <div class="step"><span><b>Отмечай смены</b> — приложение само посчитает деньги.</span></div>
+        </div>
+        <div style="display:flex;gap:11px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn p" data-gate="dl">⬇ Скачать APK</button>
+          <a class="btn g" id="repoBtn2" href="#" target="_blank" rel="noopener">⌘ Исходники</a>
+        </div>
+        <p class="note" id="dlNote">Версия <b id="verLbl">1.4</b> · Android 7.0+ · ~24 МБ · работает без интернета.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ПОДДЕРЖКА ══════════ -->
+<section id="support">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="kicker">Поддержка</div>
+      <h2>Пиши — поправлю</h2>
+      <p class="sub">Приложение сделано для своих, поэтому правки вношу быстро: скинь скрин или
+        опиши словами, что считает не так.</p>
+    </div>
+    <div class="sup rv">
+      <a class="sbox" id="mailBox" href="#"><div class="ic">✉️</div><b>Почта</b><span id="mailTxt">—</span></a>
+      <a class="sbox" id="tgBox" href="#" target="_blank" rel="noopener"><div class="ic">💬</div><b>Телеграм</b><span id="tgTxt">—</span></a>
+      <a class="sbox" id="ghBox" href="#" target="_blank" rel="noopener"><div class="ic">⌘</div><b>Код на GitHub</b><span>весь проект, можно посмотреть и форкнуть</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ПОДВАЛ ══════════ -->
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="logo" style="margin-bottom:8px">
+        <span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round">
+          <path d="M16.5 7.4a6 6 0 1 0 0 9.2"/><path d="M12 12V9.5"/><path d="M12 12l3.1 1.6"/></svg></span>
+        Смена
+      </div>
+      <div class="mut">Приложение личное. FARFOR — бренд сети, проект сделан для своих сотрудников.</div>
+    </div>
+    <div class="mut">© <span id="year"></span> · сделано с нуля: дизайн, код, графика</div>
+  </div>
+</footer>
+
+<!-- ══════════ ГЕЙТ ══════════ -->
+<div class="gate" id="gate">
+  <div class="box">
+    <div class="ic">🔒</div>
+    <h3>Доступ по коду</h3>
+    <p>Скачивание персональное. Введи код, который тебе дали — и он запомнится на этом устройстве.</p>
+    <input class="inp" id="codeIn" placeholder="НАПРИМЕР SMENA-XXXX" style="text-align:center;letter-spacing:.12em;text-transform:uppercase">
+    <div class="err" id="codeErr"></div>
+    <button class="btn p" id="codeGo" style="width:100%;margin-top:12px">Проверить код</button>
+    <p class="mut2" style="font-size:13px;margin:16px 0 0">Нет кода? Напиши автору — выдам.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

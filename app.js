@@ -44,9 +44,9 @@ const HOLIDAY_SETS = {
     short5: [], short6: []
   }
 };
-const holidayOff = d => HOLIDAY_SETS[d.slice(0,4)]?.off[d] || null;
+const holidayOff = d => (HOLIDAY_SETS[d.slice(0,4)] && HOLIDAY_SETS[d.slice(0,4)].off[d]) || null;
 const isHoliday  = d => !!holidayOff(d);
-const isShort    = (d, mode) => (HOLIDAY_SETS[d.slice(0,4)]?.[mode === '6' ? 'short6' : 'short5'] || []).includes(d);
+const isShort    = (d, mode) => { const y = HOLIDAY_SETS[d.slice(0,4)] || {}; const lst = (mode === '6' ? y.short6 : y.short5) || []; return lst.indexOf(d) >= 0; };
 
 /* ─────────────── ПАТТЕРНЫ ГРАФИКА ─────────────── */
 const PATTERNS = [
@@ -55,6 +55,9 @@ const PATTERNS = [
   { id:'2-2', w:2, o:2, desc:'классика: 2 смены — 2 дня' },
   { id:'2-3', w:2, o:3, desc:'2 смены — 3 дня дома' },
   { id:'3-3', w:3, o:3, desc:'три смены — три дня' },
+  { id:'2-1', w:2, o:1, desc:'2 смены — день дома' },
+  { id:'3-1', w:3, o:1, desc:'3 смены — день дома' },
+  { id:'4-2', w:4, o:2, desc:'4 смены — 2 дня дома' },
   { id:'5-2', w:5, o:2, desc:'пятидневка' },
   { id:'6-1', w:6, o:1, desc:'шестидневка' },
   { id:'7-1', w:7, o:1, desc:'через день' }
@@ -63,10 +66,13 @@ const PATTERNS = [
 /* ─────────────── ХРАНИЛИЩЕ ─────────────── */
 const DEFAULTS = {
   profile: { name:'', rate:275, hours:13.75, point:'', advance:1, payday:15,
-             nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45' },
+             nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45',
+             payMode:'half', advPct:40, advDays:20, siteUrl:'' },
   shifts: {},
   bonuses: {},
-  plan: { pattern:'2-2', start:'', hours:13.75, shortMode:'6' },
+  deductions: {},
+  plan: { pattern:'2-2', start:'', hours:13.75, shortMode:'6', cycle:'', shiftsPerDay:1 },
+  mate: { name:'', rate:0, hours:13.75, shifts:{} },
   ui: { range:'month', theme:'dark', tabRange:'month', fs:17, sound:1, wall:'' },
   onboarded:false
 };
@@ -75,17 +81,20 @@ let S = load();
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(!raw) return structuredClone(DEFAULTS);
+    if(!raw) return JSON.parse(JSON.stringify(DEFAULTS));
     const p = JSON.parse(raw);
     return {
       profile: Object.assign({}, DEFAULTS.profile, p.profile || {}),
       shifts: p.shifts || {},
       bonuses: p.bonuses || {},
+      deductions: p.deductions || {},
       plan: Object.assign({}, DEFAULTS.plan, p.plan || {}),
+      mate: Object.assign({}, DEFAULTS.mate, p.mate || {}, { shifts: (p.mate && p.mate.shifts) || {} }),
       ui: Object.assign({}, DEFAULTS.ui, p.ui || {}),
-      onboarded: !!p.onboarded
+      onboarded: !!p.onboarded,
+      pin: p.pin || ''
     };
-  }catch(e){ return structuredClone(DEFAULTS); }
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULTS)); }
 }
 function applyTheme(){
   const t = (S.ui && S.ui.theme) || 'dark';
@@ -117,7 +126,7 @@ function save(){
   catch(e){ toast('Не удалось сохранить: нет места в памяти'); }
 }
 function resetAll(){
-  S = structuredClone(DEFAULTS); save(); renderAll(); toast('Всё сброшено');
+  S = JSON.parse(JSON.stringify(DEFAULTS)); save(); renderAll(); toast('Всё сброшено');
 }
 
 /* ─────────────── УТИЛИТЫ ─────────────── */
@@ -163,7 +172,7 @@ function slotList(){
   const p = S.profile;
   const h = shiftLen(p.shiftStart, p.shiftEnd);
   return SLOTS.map((sl, i) => i === 0
-    ? { ...sl, label: `${p.shiftStart||'10:00'}–${p.shiftEnd||'23:45'}`, hours: h ?? sl.hours }
+    ? { ...sl, label: `${p.shiftStart||'10:00'}–${p.shiftEnd||'23:45'}`, hours: (h === null || h === undefined) ? sl.hours : h }
     : sl);
 }
 const fmtHours = h => {
@@ -171,13 +180,29 @@ const fmtHours = h => {
   return mm ? `${hh} ч ${mm} мин` : `${hh} ч`;
 };
 const getShift = d => S.shifts[d] || null;
+const getMateShift = d => (S.mate && S.mate.shifts && S.mate.shifts[d]) || null;
+function shiftHours(sh){
+  if(!sh) return 0;
+  if(sh.parts && sh.parts.length) return sh.parts.reduce((a,pt) => a + (parseFloat(pt.hours) || 0), 0);
+  return parseFloat(sh.hours) || 0;
+}
 function shiftMoney(sh, date){
   if(!sh || sh.kind !== 'work') return 0;
   const d = date || '';
-  const base = (sh.rate ?? S.profile.rate) * (sh.hours || 0);
-  let add = 0;
-  const slot = SLOTS.find(s => s.id === (sh.slot || 'day'));
-  if(slot && slot.night) add += base * (S.profile.nightPct || 0) / 100;
+  const rate = ((sh.rate === null || sh.rate === undefined) ? S.profile.rate : sh.rate);
+  let base = 0, add = 0;
+  if(sh.parts && sh.parts.length){
+    sh.parts.forEach(pt => {
+      const h = parseFloat(pt.hours) || 0;
+      base += rate * h;
+      const slot = SLOTS.find(s => s.id === (pt.slot || 'day'));
+      if(slot && slot.night) add += rate * h * (S.profile.nightPct || 0) / 100;
+    });
+  }else{
+    base = rate * (parseFloat(sh.hours) || 0);
+    const slot = SLOTS.find(s => s.id === (sh.slot || 'day'));
+    if(slot && slot.night) add += base * (S.profile.nightPct || 0) / 100;
+  }
   if(d && isHoliday(d)) add += base * (S.profile.holPct || 0) / 100;
   return base + add + (sh.bonus || 0);
 }
@@ -185,17 +210,34 @@ function rangeSum(from, to){
   let money_ = 0, hours = 0, shifts = 0;
   for(const [d, sh] of Object.entries(S.shifts)){
     if(d < from || d > to) continue;
-    if(sh.kind === 'work'){ money_ += shiftMoney(sh, d); hours += sh.hours || 0; shifts++; }
+    if(sh.kind === 'work'){ money_ += shiftMoney(sh, d); hours += shiftHours(sh); shifts++; }
   }
   return { money: money_, hours, shifts };
 }
 function monthKey(d){ return d.slice(0,7); }
-function bonusOf(ym){ return (S.bonuses && S.bonuses[ym] && S.bonuses[ym].amount) || 0; }
+function bonusItems(ym){
+  const b = S.bonuses && S.bonuses[ym];
+  if(!b) return [];
+  if(b.items && b.items.length) return b.items;
+  if(b.amount || b.note) return [{ id:'legacy', name:b.note || 'Премия', amount:b.amount || 0, date:'' }];
+  return [];
+}
+function bonusOf(ym){ return bonusItems(ym).reduce((a,i) => a + (parseInt(i.amount,10) || 0), 0); }
+function deductionItems(ym){
+  const d = S.deductions && S.deductions[ym];
+  if(!d) return [];
+  if(d.items && d.items.length) return d.items;
+  if(d.amount || d.note) return [{ id:'legacy', name:d.note || 'Списание', amount:d.amount || 0, date:'' }];
+  return [];
+}
+function deductionOf(ym){ return deductionItems(ym).reduce((a,i) => a + (parseInt(i.amount,10) || 0), 0); }
 function monthTotal(ym){
   const r = monthRange(ym);
   const s = rangeSum(r.from, r.to);
   s.money += bonusOf(ym);
   s.bonus = bonusOf(ym);
+  s.deduction = deductionOf(ym);
+  s.money -= s.deduction;
   return s;
 }
 function monthRange(ym){
@@ -203,19 +245,48 @@ function monthRange(ym){
   const a = new Date(y, m-1, 1), b = new Date(y, m, 0);
   return { from: iso(a), to: iso(b), days: b.getDate() };
 }
-function plannedShifts(from, to){
-  // сколько смен по текущему графику в период
-  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
-  const start = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
-  const cyc = p.w + p.o, out = [];
-  let d = new Date(start);
-  if (d < fromIso(from)) {
-    const diff = Math.floor((fromIso(from) - d) / 86400000);
-    d = addDays(d, diff - (diff % cyc));
+function cycleBlocks(){
+  const c = (S.plan.cycle || '').trim();
+  if(c){
+    const out = [];
+    c.split(',').forEach(part => {
+      const m = part.split('/');
+      const w = parseInt(m[0], 10), o = parseInt(m[1], 10);
+      if(w > 0) out.push({ w, o: isNaN(o) ? 0 : o });
+    });
+    if(out.length) return out;
   }
-  while (d <= fromIso(to)){
-    const idx = Math.floor((d - start) / 86400000) % cyc;
-    if (idx < p.w) out.push(iso(d));
+  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
+  return [{ w:p.w, o:p.o }];
+}
+function cycleLen(){ return cycleBlocks().reduce((a,b) => a + b.w + b.o, 0); }
+function cycleLabel(){
+  const c = (S.plan.cycle || '').trim();
+  if(c) return c.replace(/\s/g,'');
+  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
+  return p.id;
+}
+function isWorkIdx(i){
+  const len = cycleLen();
+  let rem = ((i % len) + len) % len;
+  const blocks = cycleBlocks();
+  for(let b = 0; b < blocks.length; b++){
+    const bl = blocks[b];
+    if(rem < bl.w) return true;      // рабочие дни блока
+    rem -= bl.w;
+    if(rem < bl.o) return false;     // выходные блока
+    rem -= bl.o;
+  }
+  return false;
+}
+function plannedShifts(from, to){
+  const start = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
+  const out = [];
+  let d = new Date(start);
+  if(d < fromIso(from)) d = addDays(d, Math.floor((fromIso(from) - d) / 86400000));
+  while(d <= fromIso(to)){
+    const idx = Math.floor((d - start) / 86400000);
+    if(isWorkIdx(idx)) out.push(iso(d));
     d = addDays(d, 1);
   }
   return out;
@@ -233,10 +304,18 @@ function toast(msg){
 /* ─────────────── ЗАСТАВКА ─────────────── */
 function initSplash(){
   const sp = $('#splash');
-  const go = () => { sp.classList.add('hide'); setTimeout(() => sp.remove(), 500); };
-  $('#splashSkip').onclick = go;
-  sp.onclick = e => { if(e.target === sp) go(); };
-  setTimeout(go, 3900);
+  if(!sp) return;
+  let done = false;
+  const go = () => {
+    if(done) return; done = true;
+    sp.classList.add('hide');
+    setTimeout(() => { try{ sp.remove(); }catch(e){} }, 600);
+  };
+  $('#splashSkip').onclick = e => { e.stopPropagation(); go(); };
+  sp.onclick = go;                       // тап в любом месте — пропустить
+  setTimeout(go, 3900);                 // анимация 3,6 с + запас
+  setTimeout(go, 5200);                 // страховка: точно уйдёт
+  window.addEventListener('load', () => setTimeout(go, 4200));
 }
 
 /* ─────────────── ТАБЫ ─────────────── */
@@ -265,7 +344,7 @@ function renderHome(){
   const now = new Date();
   const prof = S.profile;
   $('#tbRate').textContent = prof.rate || 0;
-  $('#heroHi').textContent = prof.name ? `Привет, ${prof.name}` : 'Привет';
+  $('#heroHi').textContent = prof.name ? `Привет, ${prof.name}!` : 'Привет!';
   $('#heroDate').textContent = now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
 
   const sh = getShift(ti);
@@ -389,17 +468,26 @@ function renderCal(){
   const ym = `${calY}-${pad(calM+1)}`;
   const r = monthRange(ym);
   const s = rangeSum(r.from, r.to);
-  const holCount = Object.keys(HOLIDAY_SETS[ym.slice(0,4)]?.off || {}).filter(d => d.startsWith(ym)).length;
+  const holCount = Object.keys((HOLIDAY_SETS[ym.slice(0,4)] && HOLIDAY_SETS[ym.slice(0,4)].off) || {}).filter(d => d.startsWith(ym)).length;
   $('#calSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · ${s.hours} ч</span><span>Заработано: <b>${moneyShort(s.money)}</b></span><span>Праздников: <b>${holCount}</b></span>`;
 }
 function fillMonthByPattern(){
   const ym = `${calY}-${pad(calM+1)}`, r = monthRange(ym);
   const days = plannedShifts(r.from, r.to);
+  const spd = Math.max(1, Math.min(3, parseInt(S.plan.shiftsPerDay,10) || 1));
+  const per = parseFloat(S.plan.hours) || 12;
   let added = 0;
   days.forEach(d => {
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) return;
-    S.shifts[d] = { kind:'work', hours:S.plan.hours || 12, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    const rec = { kind:'work', hours:per, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    if(spd > 1){
+      const part = Math.round(per / spd * 100) / 100;
+      rec.parts = [];
+      for(let i = 0; i < spd; i++) rec.parts.push({ slot:'day', hours:part });
+      rec.hours = Math.round(part * spd * 100) / 100;
+    }
+    S.shifts[d] = rec;
     added++;
   });
   save(); renderCal(); toast(`Заполнено смен: ${added}`);
@@ -419,7 +507,7 @@ let sheetDate = null, sheetKind = 'work', sheetSlot = 'day', sheetShort = 0;
 function openSheet(date){
   sheetDate = date;
   const dt = fromIso(date);
-  const sh = getShift(date);
+  const sh = (window.__fxMate ? getMateShift(date) : getShift(date));
   sheetKind = sh ? sh.kind : 'work';
   sheetSlot = (sh && sh.slot) || 'day';
   sheetShort = sh ? (sh.shortApplied ? 1 : 0) : (isShort(date, S.plan.shortMode) ? 1 : 0);
@@ -438,7 +526,7 @@ function openSheet(date){
   $('#shHours').value = defH;
   renderSlotChips();
   renderShortChips();
-  $('#shRate').value = (sh && sh.rate != null) ? sh.rate : S.profile.rate;
+  $('#shRate').value = (sh && sh.rate != null) ? sh.rate : (window.__fxMate ? (S.mate.rate || 0) : S.profile.rate);
   $('#shBonus').value = (sh && sh.bonus) || 0;
   $('#shNote').value = (sh && sh.note) || '';
   $('#hoursField').style.display = sheetKind === 'work' ? '' : 'none';
@@ -529,12 +617,25 @@ function initSheet(){
       ? { kind:'work', hours:h, rate:parseInt($('#shRate').value||0), bonus:parseInt($('#shBonus').value||0),
           note:$('#shNote').value.trim(), slot:sheetSlot, shortApplied:!!sheetShort }
       : { kind:sheetKind, hours:0, rate:0, bonus:0, note:$('#shNote').value.trim() };
-    S.shifts[sheetDate] = rec;
+    if(window.__fxParts && window.__fxParts.length > 1){
+      rec.parts = window.__fxParts.map(pt => ({ slot:pt.slot, hours:parseFloat(pt.hours) || 0 }));
+      rec.hours = rec.parts.reduce((a,pt) => a + pt.hours, 0);
+    }
+    if(window.__fxMate){
+      if(!S.mate.shifts) S.mate.shifts = {};
+      S.mate.shifts[sheetDate] = rec;
+    }else{
+      S.shifts[sheetDate] = rec;
+    }
     save(); $('#sheetWrap').classList.remove('on');
     renderAll(); celebrate(); sound('save'); toast('Сохранено');
   };
   $('#shDel').onclick = () => {
-    if(S.shifts[sheetDate]){ delete S.shifts[sheetDate]; save(); $('#sheetWrap').classList.remove('on'); renderAll(); toast('Удалено'); }
+    const target = window.__fxMate ? getMateShift(sheetDate) : S.shifts[sheetDate];
+    if(target){
+      if(window.__fxMate) delete S.mate.shifts[sheetDate]; else delete S.shifts[sheetDate];
+      save(); $('#sheetWrap').classList.remove('on'); renderAll(); toast('Удалено');
+    }
     else $('#sheetWrap').classList.remove('on');
   };
 }
@@ -588,21 +689,39 @@ function showTextModal(title, txt){
 }
 
 /* ─────────────── ВЫПЛАТЫ: аванс 1-го, зарплата 15-го ─────────────── */
+function payMode(){ return S.profile.payMode || 'half'; }
+function advWindow(){ return Math.max(1, Math.min(28, parseInt(S.profile.advDays,10) || 20)); }
+function advPercent(){ return Math.max(0, Math.min(100, parseInt(S.profile.advPct,10) || 0)); }
+
 function payPeriods(){
   const now = today();
   const advDay = S.profile.advance || 1;
   const payDay = S.profile.payday || 15;
   const dim = (y,m) => new Date(y, m+1, 0).getDate();
   const mk = (y,m,d) => new Date(y, m, d);
+  const mode = payMode();
+  const aw = advWindow();
+  const pct = advPercent();
   const mkPay = (kind, date) => {
     let from, to;
-    if(kind === 'salary'){                      // зарплата = за первую половину месяца
-      from = mk(date.getFullYear(), date.getMonth(), 1);
-      to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
-    }else{                                      // аванс = за вторую половину прошлого месяца
-      const y = date.getFullYear(), m = date.getMonth()-1;
-      from = mk(y, m, 16);
-      to   = mk(y, m, dim(y, m));
+    if(mode === 'pct'){
+      const py = date.getFullYear(), pm = date.getMonth() - 1;
+      if(kind === 'salary'){                 // зарплата: [aw+1 прошлого .. payDay текущего]
+        from = mk(py, pm, aw + 1);
+        to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
+      }else{                                 // аванс: [1..aw] прошлого месяца
+        from = mk(py, pm, 1);
+        to   = mk(py, pm, Math.min(aw, dim(py, pm)));
+      }
+    }else{
+      if(kind === 'salary'){                 // зарплата = первая половина месяца
+        from = mk(date.getFullYear(), date.getMonth(), 1);
+        to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
+      }else{                                 // аванс = вторая половина прошлого месяца
+        const y = date.getFullYear(), m = date.getMonth() - 1;
+        from = mk(y, m, 16);
+        to   = mk(y, m, dim(y, m));
+      }
     }
     return { kind, date, from: iso(from), to: iso(to) };
   };
@@ -616,14 +735,58 @@ function payPeriods(){
   list.forEach(p => {
     p.days = Math.max(0, Math.round((p.date - now) / 86400000));
     p.label = p.kind === 'salary' ? `Зарплата ${p.date.getDate()}-го` : `Аванс ${p.date.getDate()}-го`;
-    p.fact = rangeSum(p.from, p.to).money;
-    if(p.kind === 'salary' && monthKey(p.from) === monthKey(ti)) p.fact += bonusOf(monthKey(ti));
+    const rs = rangeSum(p.from, p.to);
+    p.raw = rs.money;
+    p.premium = 0;
+    if(mode === 'pct' && p.kind === 'advance'){
+      p.fact = rs.money * pct / 100;
+      p.premium = rs.money - p.fact;
+    }else{
+      p.fact = rs.money;
+    }
     const future = plannedShifts(p.from, p.to).filter(d => d >= ti);
     p.plan = future.length;
-    p.planMoney = future.length * (S.profile.rate || 0) * (S.plan.hours || S.profile.hours || 13.75);
-    p.total = p.fact + p.planMoney;
+    const perShift = (S.profile.rate || 0) * (S.plan.hours || S.profile.hours || 13.75);
+    p.planMoney = future.length * perShift;
+    p.total = p.fact + (mode === 'pct' ? p.planMoney * pct / 100 : p.planMoney);
   });
+  const advP = list.find(x => x.kind === 'advance');
+  const salP = list.find(x => x.kind === 'salary');
+  if(mode === 'pct' && advP && salP){
+    salP.fact += advP.premium;              // удержанная премия уходит в зарплату
+    salP.premium += advP.premium;
+    salP.total += advP.premium;
+  }
+  if(salP){
+    const bym = (mode === 'pct') ? monthKey(ti) : monthKey(salP.from);
+    if(mode === 'pct' || monthKey(salP.from) === monthKey(ti)){
+      const bo = bonusOf(bym);
+      if(bo){ salP.fact += bo; salP.total += bo; salP.bonusYm = bym; }
+      const ded = deductionOf(bym);
+      if(ded){ salP.fact -= ded; salP.total -= ded; salP.deductionYm = bym; }
+    }
+  }
   return list;
+}
+
+function payBreakdown(){
+  const ti = todayISO(), ym = monthKey(ti);
+  const m = monthRange(ym);
+  const aw = advWindow(), pct = advPercent();
+  const dim = new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();
+  const wTo = iso(new Date(+ym.slice(0,4), +ym.slice(5,7), Math.min(aw, dim)));
+  const win = rangeSum(m.from, wTo);
+  const rest = rangeSum(iso(addDays(fromIso(wTo), 1)), m.to);
+  const items = bonusItems(ym);
+  const bo = bonusOf(ym);
+  let adv = 0, prem = bo;
+  if(payMode() === 'pct'){
+    adv = win.money * pct / 100;
+    prem = win.money - adv + bo;
+  }else{
+    prem = win.money + bo;
+  }
+  return { mode: payMode(), pct, aw, win, rest, adv, prem, bonus: bo, items, ym };
 }
 
 /* ─────────────── ТАБЕЛЬ ─────────────── */
@@ -666,9 +829,11 @@ function renderTab(){
   }).join('') : '<div class="empty">Пока пусто</div>';
   const ymNow = currentTabYm();
   const bo = bonusOf(ymNow);
-  $('#bonusLine').innerHTML = bo ? `<div class="cal-sum" style="margin-bottom:12px"><span>Премия: <b>${money(bo)}</b>${S.bonuses[ymNow].note ? ' · ' + S.bonuses[ymNow].note : ''}</span><span></span></div>` : '';
-  const tot = s.money + bo;
-  $('#tabSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · <b>${s.hours} ч</b></span><span>Итого: <b>${money(tot)}</b></span>`;
+  const bItems = bonusItems(ymNow);
+  $('#bonusLine').innerHTML = bo ? `<div class="cal-sum" style="margin-bottom:12px"><span>Доплаты и премии: <b>${money(bo)}</b>${bItems.length ? ' · ' + bItems.length + ' поз.' : ''}</span><span></span></div>` : '';
+  const ded = deductionOf(ymNow);
+  const tot = s.money + bo - ded;
+  $('#tabSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · <b>${s.hours} ч</b></span><span>Итого: <b>${money(tot)}</b>${ded ? ' · <span style="color:var(--red)">−' + money(ded) + '</span>' : ''}</span>`;
 }
 function initTab(){
   $$('#tabSeg button').forEach(b => b.onclick = () => { S.ui.tabRange = b.dataset.tr; tabOff = 0; save(); renderTab(); });
@@ -678,7 +843,7 @@ function initTab(){
     const v = prompt('Премия / доплата за ' + ym + ', ₽', cur.amount || 0);
     if(v == null) return;
     const amt = parseInt(v||0);
-    const note = prompt('За что (необязательно)', cur.note || '') ?? cur.note;
+    const nv = prompt('За что (необязательно)', cur.note || ''); const note = (nv === null || nv === undefined) ? cur.note : nv;
     if(amt) S.bonuses[ym] = { amount: amt, note: note || '' };
     else delete S.bonuses[ym];
     save(); renderAll(); toast(amt ? 'Премия добавлена' : 'Премия убрана');
@@ -755,28 +920,35 @@ function applyPattern(){
   const from = S.plan.start || todayISO();
   const to = iso(addDays(fromIso(from), 89));
   const days = plannedShifts(from, to);
+  const spd = Math.max(1, Math.min(3, parseInt(S.plan.shiftsPerDay,10) || 1));
+  const per = parseFloat(S.plan.hours) || 12;
   let n = 0;
   days.forEach(d => {
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) return;
-    S.shifts[d] = { kind:'work', hours:S.plan.hours || 12, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    const rec = { kind:'work', hours:per, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    if(spd > 1){
+      const part = Math.round(per / spd * 100) / 100;
+      rec.parts = [];
+      for(let i = 0; i < spd; i++) rec.parts.push({ slot:'day', hours:part });
+      rec.hours = Math.round(part * spd * 100) / 100;
+    }
+    S.shifts[d] = rec;
     n++;
   });
-  // выходные тоже помечаем, чтобы в календаре было видно ритм
+  const origin = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
   let off = 0;
-  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
-  const start = fromIso(from), cyc = p.w + p.o;
   for(let i = 0; i < 90; i++){
-    const d = iso(addDays(start, i));
-    if(days.includes(d)) continue;
+    const d = iso(addDays(fromIso(from), i));
+    if(days.indexOf(d) >= 0) continue;
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) continue;
-    if(Math.floor((fromIso(d) - start)/86400000) % cyc >= p.w){
+    if(!isWorkIdx(Math.floor((fromIso(d) - origin) / 86400000))){
       S.shifts[d] = { kind:'off', hours:0, rate:0, bonus:0, note:'' }; off++;
     }
   }
   save(); renderAll();
-  toast(`График ${p.id}: ${n} ${plural(n,'смена','смены','смен')} на 3 месяца`);
+  toast(`График ${cycleLabel()}: ${n} ${plural(n,'смена','смены','смен')} на 3 месяца`);
 }
 
 /* ─────────────── СТАТИСТИКА ─────────────── */
@@ -932,10 +1104,11 @@ function renderSet(){
   $('#fPoint').value = S.profile.point || '';
   $('#fPayday').value = String(S.profile.payday || 15);
   $('#fAdvance').value = String(S.profile.advance || 1);
-  $('#fNight').value = S.profile.nightPct ?? 0;
-  $('#fHol').value = S.profile.holPct ?? 0;
+  $('#fNight').value = (S.profile.nightPct === null || S.profile.nightPct === undefined) ? 0 : S.profile.nightPct;
+  $('#fHol').value = (S.profile.holPct === null || S.profile.holPct === undefined) ? 0 : S.profile.holPct;
   $('#abRate').textContent = (S.profile.rate || 0) + ' ₽';
-  $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === (S.ui.sound ?? 1)));
+  const pp = $('#pinPill'); if(pp){ pp.textContent = S.pin ? 'включён' : 'выключен'; pp.classList.toggle('on', !!S.pin); }
+  $$('#soundChips .chip').forEach(c => c.classList.toggle('on', parseInt(c.dataset.sound) === ((S.ui.sound === null || S.ui.sound === undefined) ? 1 : S.ui.sound)));
   $('#fShiftStart').value = S.profile.shiftStart || '10:00';
   $('#fShiftEnd').value = S.profile.shiftEnd || '23:45';
   applyTheme();
@@ -1027,6 +1200,22 @@ function initActions(){
     if(a === 'open-sched') b.onclick = () => $$('.tabbar button').find(x => x.dataset.tab === 'sched').click();
     if(a === 'open-cal') b.onclick = () => $$('.tabbar button').find(x => x.dataset.tab === 'cal').click();
     if(a === 'make-report') b.onclick = makeReport;
+    if(a === 'set-pin') b.onclick = () => {
+      S.pin = ''; save();
+      lockState = 'pin';
+      $('#lock').classList.add('on');
+      $('#lockNameWrap').classList.remove('on');
+      $('#lockTitle').textContent = APP_NAME;
+      $('#lockText').textContent = 'Новый PIN: 4–6 цифр';
+      $('#lockGo').textContent = 'Сохранить';
+      $('#lockReset').style.display = 'none';
+      $('#lockPin').value = ''; pinTmp = '';
+      $('#lockPin').focus();
+    };
+    if(a === 'off-pin') b.onclick = () => {
+      if(!S.pin){ toast('PIN и не установлен'); return; }
+      if(confirm('Отключить вход по PIN?')){ S.pin = ''; save(); toast('PIN отключён'); renderSet(); }
+    };
     if(a === 'open-bonus') b.onclick = () => {
       const d = todayISO(), sh = getShift(d);
       if(!sh || sh.kind !== 'work'){ toast('Сначала отметь смену на сегодня'); openSheet(d); return; }
@@ -1204,16 +1393,121 @@ function renderBadges(){
   ].map(([k,v]) => `<div class="br"><span>${k}</span><b>${v}</b></div>`).join('');
 }
 
+
+/* ═══════════════ ЭКРАН ВХОДА: имя + PIN ═══════════════ */
+const APP_NAME = 'Смена';
+let lockState = 'unlock', pinTmp = '', pinTmp2 = '';
+
+async function hashPin(pin){
+  try{
+    if(window.crypto && window.crypto.subtle){
+      const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode('farfor-smena:' + pin));
+      return 's' + [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  let h = 5381;
+  for(let i = 0; i < pin.length; i++) h = ((h << 5) + h + pin.charCodeAt(i)) >>> 0;
+  return 'f' + h.toString(16);
+}
+function initLock(){
+  const el = $('#lock');
+  const hasPin = !!(S.pin && S.pin.length);
+  if(!hasPin && S.profile.name){        // PIN отключён, приложение уже настроено — пускаем сразу
+    el.classList.remove('on');
+    return false;
+  }
+  if(!hasPin){
+    lockState = 'name';
+    $('#lockTitle').textContent = APP_NAME;
+    $('#lockText').textContent = 'Как тебя звать?';
+    $('#lockNameWrap').classList.add('on');
+    $('#lockGo').textContent = 'Дальше';
+    $('#lockReset').style.display = 'none';
+  }else{
+    lockState = 'unlock';
+    $('#lockTitle').textContent = APP_NAME;
+    $('#lockText').textContent = 'Привет, ' + (S.profile.name || 'повар') + '! Введи код';
+    $('#lockGo').textContent = 'Войти';
+    $('#lockReset').style.display = '';
+  }
+  el.classList.add('on');
+  const pin = $('#lockPin');
+  pin.oninput = () => { pin.value = pin.value.replace(/\D/g,'').slice(0,6); $('#lockHint').textContent = ''; };
+  pin.onkeydown = e => { if(e.key === 'Enter') lockGo(); };
+  $('#lockGo').onclick = lockGo;
+  $('#lockReset').onclick = () => {
+    if(confirm('Сбросить PIN и имя? Смены и деньги останутся на месте.')){
+      S.pin = ''; save();
+      lockState = 'name'; pinTmp = ''; pinTmp2 = '';
+      $('#lockNameWrap').classList.add('on');
+      $('#lockName').value = S.profile.name || '';
+      $('#lockText').textContent = S.profile.name ? ('Привет, ' + S.profile.name + '! Как зовут?') : 'Как тебя звать?';
+      $('#lockGo').textContent = 'Дальше';
+      $('#lockReset').style.display = 'none';
+      $('#lockPin').value = '';
+    }
+  };
+  setTimeout(() => { const f = lockState === 'name' ? $('#lockName') : $('#lockPin'); f.focus(); }, 350);
+  return true;
+}
+async function lockGo(){
+  const name = $('#lockName').value.trim();
+  const pin = $('#lockPin').value.trim();
+  $('#lockHint').textContent = '';
+  if(lockState === 'name'){
+    if(!name){ $('#lockHint').textContent = 'Введи имя'; return; }
+    S.profile.name = name;
+    lockState = 'pin'; pinTmp = '';
+    $('#lockNameWrap').classList.remove('on');
+    $('#lockText').textContent = 'Придумай PIN: 4–6 цифр';
+    $('#lockGo').textContent = 'Дальше';
+    $('#lockPin').value = '';
+    $('#lockPin').focus();
+    return;
+  }
+  if(lockState === 'pin'){
+    if(!/^\d{4,6}$/.test(pin)){ $('#lockHint').textContent = 'Нужно 4–6 цифр'; return; }
+    pinTmp = pin; lockState = 'pin2';
+    $('#lockText').textContent = 'Повтори код';
+    $('#lockPin').value = '';
+    $('#lockPin').focus();
+    return;
+  }
+  if(lockState === 'pin2'){
+    if(pin !== pinTmp){ $('#lockHint').textContent = 'Коды не совпали, попробуй ещё'; lockState = 'pin'; pinTmp=''; $('#lockPin').value=''; return; }
+    S.pin = await hashPin(pin);
+    save();
+    unlockApp();
+    return;
+  }
+  // unlock
+  const h = await hashPin(pin);
+  if(h === S.pin){ unlockApp(); }
+  else { $('#lockHint').textContent = 'Неверный код'; $('#lockPin').value = ''; $('#lockPin').focus(); }
+}
+function unlockApp(){
+  $('#lock').classList.remove('on');
+  $('#tbTitle').textContent = APP_NAME;
+  renderAll();
+  toast('Привет, ' + (S.profile.name || 'повар') + '!');
+  setTimeout(initOnb, 400);            // обучение — только после входа
+}
+
 /* ─────────────── ЗАПУСК ─────────────── */
 function renderAll(){
   renderHome(); renderCal(); renderSched(); renderStats(); renderSet();
+  if(window.fxRenderAll) window.fxRenderAll();
   if($('#walls')) renderWalls();
   if($('#calcValue')) renderCalc();
   if($('#badges')) renderBadges();
 }
 function init(){
-  initSplash(); initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
-  initOnb(); initCalc(); applyTheme();
+  initSplash();
+  initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
+  initCalc(); applyTheme();
+  if(window.fxInit) window.fxInit();
+  const locked = initLock();
+  if(!locked) setTimeout(initOnb, 350);
   $$('[data-go]').forEach(b => b.onclick = () => { sound('tap'); openSub(b.dataset.go); });
   $$('[data-back]').forEach(b => b.onclick = () => { sound('tap'); closeSub(); });
   $$('#fsChips .chip').forEach(c => c.onclick = () => {
@@ -1227,7 +1521,7 @@ function init(){
   $$('#themeChips .chip').forEach(c => c.onclick = () => {
     S.ui.theme = c.dataset.theme; save(); applyTheme(); sound('tap');
   });
-  $('#abVer').textContent = '1.0';
+  $('#abVer').textContent = '1.4';
   renderAll();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
