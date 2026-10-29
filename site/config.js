@@ -12,8 +12,8 @@ const SITE = {
 
   /* ссылки */
   repo: 'https://github.com/moovivan7-art/farfor-shifts',
-  apk: 'farfor-shifts.apk',     // лежит рядом с index.html
-  apkZip: 'farfor-shifts-apk.zip',
+  apk: 'farfor-shifts-1.5.apk',     // лежит рядом с index.html
+  apkZip: 'farfor-shifts-1.5.apk.zip',
   siteUrl: '',                  // ← абсолютный URL сайта (заполни после деплоя)
 
   /* параметры расчёта по умолчанию */
