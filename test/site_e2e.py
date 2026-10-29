@@ -3,11 +3,23 @@
 
 Запуск:  python3 test/site_e2e.py
 """
-import os, sys
+import os, sys, threading, http.server, socketserver, functools
 from playwright.sync_api import sync_playwright
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SITE = "file://" + os.path.join(BASE, "site", "index.html")
+SITE_DIR = os.path.join(BASE, "site")
+
+
+class Quiet(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+
+def serve():
+    handler = functools.partial(Quiet, directory=SITE_DIR)
+    httpd = socketserver.TCPServer(("127.0.0.1", 8123), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd
 CHROME = os.environ.get("CHROME_PATH", "/usr/bin/chromium")
 SHOTS = os.path.join(BASE, "site", "shots")
 os.makedirs(SHOTS, exist_ok=True)
@@ -19,6 +31,9 @@ def ok(name, cond, extra=""):
 
 # код приглашения из site/config.js (первый в списке)
 CODE = "SMENA-F76"
+
+SRV = serve()
+SITE = "http://127.0.0.1:8123/index.html"
 
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox", "--disable-gpu",
@@ -92,6 +107,7 @@ with sync_playwright() as p:
     real = [e for e in errors if "ERR_FILE_NOT_FOUND" not in e and "favicon" not in e.lower()]
     ok("критических ошибок нет", len(real) == 0, real[:3])
     b.close()
+SRV.shutdown()
 
 print("\n" + "=" * 46)
 print(f"  ПРОШЛО: {len(PASS)}   ПРОВАЛЕНО: {len(FAIL)}")

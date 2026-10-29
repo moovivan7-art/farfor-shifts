@@ -37,6 +37,11 @@ demo = {
     "onboarded": True, "pin": ""
 }
 
+def shot(pg):
+    """playwright отдаёт bytes — оборачиваем в файл-объект для PIL"""
+    return Image.open(io.BytesIO(pg.screenshot())).convert("RGB")
+
+
 shots = {}
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox", "--disable-gpu",
@@ -65,11 +70,6 @@ with sync_playwright() as p:
     pg.wait_for_timeout(700)
     shots["sheet"] = shot(pg)
     b.close()
-
-
-def shot(pg):
-    """playwright отдаёт bytes — оборачиваем в файл-объект для PIL"""
-    return Image.open(io.BytesIO(pg.screenshot())).convert("RGB")
 
 
 def crop_phone(im):
