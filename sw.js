@@ -1,4 +1,4 @@
-const CACHE = 'farfor-v1';
+const CACHE = 'obzhig-v1.5';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './assets/icon-192.png', './assets/icon-512.png', './assets/logo.svg'];
 self.addEventListener('install', e => {

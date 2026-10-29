@@ -77,10 +77,11 @@ def crop_phone(im, size=(390, 820)):
     return im.convert("RGB").resize(size, Image.LANCZOS)
 
 
-def save_gif(frames, path, duration=100, colors=128):
+def save_gif(frames, path, duration=100, colors=48, dither=False):
     """сохраняет GIF с общей палитрой — чтобы не мигал и не весил много"""
-    pal = frames[0].convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT)
-    conv = [f.convert("RGB").quantize(palette=pal, dither=Image.FLOYDSTEINBERG) for f in frames]
+    dth = Image.Dither.NONE if not dither else Image.Dither.FLOYDSTEINBERG
+    pal = frames[0].convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT, dither=dth)
+    conv = [f.convert("RGB").quantize(palette=pal, dither=dth) for f in frames]
     conv[0].save(path, save_all=True, append_images=conv[1:], duration=duration, loop=0,
                  optimize=True, disposal=2)
     return path
@@ -94,6 +95,19 @@ def crossfade(a, b, steps=8):
     return out
 
 
+def slide(a, b, steps=12):
+    """плавный сдвиг — чище, чем наложение двух экранов"""
+    w, h = a.size
+    out = []
+    for i in range(steps):
+        t = i / steps
+        canvas = Image.new("RGB", (w * 2, h))
+        canvas.paste(a, (int(-w * t), 0))
+        canvas.paste(b, (int(w - w * t), 0))
+        out.append(canvas.crop((0, 0, w, h)))
+    return out
+
+
 def build_hero():
     """цикл экранов в вертикальном формате телефона"""
     seq = ["home", "cal", "sched", "tab", "home"]
@@ -101,10 +115,10 @@ def build_hero():
     for i in range(len(seq) - 1):
         a = crop_phone(shots[seq[i]])
         b = crop_phone(shots[seq[i + 1]])
-        frames += crossfade(a, b, 7)
+        frames += slide(a, b, 12)
     frames += [crop_phone(shots["home"])] * 10
     out = os.path.join(SITE, "hero.gif")
-    save_gif(frames, out, 100)
+    save_gif(frames, out, 90)
     print("hero.gif", os.path.getsize(out) // 1024, "KB", len(frames), "кадров")
 
 
@@ -128,7 +142,7 @@ def build_demo():
         canvas.paste(r, (int(rx - (340 * z - 340) // 2), int((H - 430 * z) // 2)))
         frames.append(canvas.convert("RGB"))
     out = os.path.join(SITE, "demo.gif")
-    save_gif(frames, out, 120)
+    save_gif(frames, out, 110)
     print("demo.gif", os.path.getsize(out) // 1024, "KB")
 
 
@@ -147,7 +161,7 @@ def build_split():
         canvas.paste(c, (int((680 - w2) // 2), int((canvas.size[1] - h2) // 2)))
         frames.append(canvas)
     out = os.path.join(SITE, "split.gif")
-    save_gif(frames, out, 120)
+    save_gif(frames, out, 110)
     print("split.gif", os.path.getsize(out) // 1024, "KB")
 
 

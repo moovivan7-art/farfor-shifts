@@ -1,6 +1,6 @@
 {
-  "name": "Смена — учёт смен и зарплаты",
-  "short_name": "Смена",
+  "name": "Обжиг — учёт смен и зарплаты",
+  "short_name": "Обжиг",
   "description": "Личный учёт смен, часов и зарплаты для повара FARFOR. PIN-вход, график 2-2, праздники, прогноз выплат, награды.",
   "start_url": "./index.html",
   "scope": "./",
@@ -27,23 +27,11 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     },
-    {
-      "src": "assets/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "assets/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    }
   ],
   "shortcuts": [
     {
       "name": "Отметить смену",
-      "short_name": "Смена",
+      "short_name": "Обжиг",
       "url": "./index.html?a=shift"
     },
     {

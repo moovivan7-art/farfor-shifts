@@ -67,7 +67,8 @@ const PATTERNS = [
 const DEFAULTS = {
   profile: { name:'', rate:275, hours:13.75, point:'', advance:1, payday:15,
              nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45',
-             payMode:'half', advPct:40, advDays:20, siteUrl:'' },
+             payMode:'half', advPct:40, advDays:20, siteUrl:'',
+             vacRate:0, vacSalary:0, goalMoney:0, fpId:'', fpOn:false },
   shifts: {},
   bonuses: {},
   deductions: {},
@@ -769,6 +770,33 @@ function payPeriods(){
   return list;
 }
 
+/* ── вакансия против факта ── */
+function vacCompare(){
+  const p = S.profile;
+  const rate = p.rate || 0, vacRate = p.vacRate || 0;
+  const salary = p.vacSalary || 0;
+  const m = monthRange(monthKey(todayISO()));
+  const fact = rangeSum(m.from, m.to).money + bonusOf(monthKey(todayISO())) - deductionOf(monthKey(todayISO()));
+  const hours = rangeSum(m.from, m.to).hours;
+  const perHour = hours ? Math.round(fact / hours) : 0;
+  const dRate = rate - vacRate;
+  const dPct = vacRate ? Math.round(dRate / vacRate * 100) : null;
+  const dSal = salary ? Math.round(fact - salary) : null;
+  const dSalPct = salary ? Math.round((fact - salary) / salary * 100) : null;
+  return { rate, vacRate, dRate, dPct, salary, fact, dSal, dSalPct, perHour, hours };
+}
+/* ── накопительный план в процентах ── */
+function planProgress(){
+  const goal = S.profile.goalMoney || 0;
+  const ym = monthKey(todayISO());
+  const m = monthRange(ym);
+  const money = rangeSum(m.from, m.to).money + bonusOf(ym) - deductionOf(ym);
+  const pct = goal ? Math.round(money / goal * 100) : 0;
+  const left = Math.max(0, goal - money);
+  const daysLeft = Math.max(0, new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate() - today().getDate());
+  const perDay = daysLeft ? Math.round(left / daysLeft) : left;
+  return { goal, money, pct, left, daysLeft, perDay, ym };
+}
 function payBreakdown(){
   const ti = todayISO(), ym = monthKey(ti);
   const m = monthRange(ym);
@@ -1395,7 +1423,7 @@ function renderBadges(){
 
 
 /* ═══════════════ ЭКРАН ВХОДА: имя + PIN ═══════════════ */
-const APP_NAME = 'Смена';
+const APP_NAME = 'Ритм';
 let lockState = 'unlock', pinTmp = '', pinTmp2 = '';
 
 async function hashPin(pin){
@@ -1491,6 +1519,72 @@ function unlockApp(){
   renderAll();
   toast('Привет, ' + (S.profile.name || 'повар') + '!');
   setTimeout(initOnb, 400);            // обучение — только после входа
+}
+
+/* ─────────────── ОТПЕЧАТОК ПАЛЬЦА ─────────────── */
+function b64uBuf(buf){
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for(let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function unb64uBuf(str){
+  let t = str.replace(/-/g,'+').replace(/_/g,'/');
+  while(t.length % 4) t += '=';
+  const raw = atob(t);
+  const out = new Uint8Array(raw.length);
+  for(let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out.buffer;
+}
+async function fpAvailable(){
+  if(window.Android && window.Android.authenticate) return true;      // мост в APK
+  try{
+    if(!window.PublicKeyCredential || !navigator.credentials) return false;
+    if(PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)
+      return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    return true;
+  }catch(e){ return false; }
+}
+async function fpRegister(){
+  if(window.Android && window.Android.authenticate){
+    const ok = await new Promise(res => {
+      window.__fpCb = res;
+      window.Android.authenticate('register');
+    });
+    if(ok) S.fpId = 'android';
+    return !!ok;
+  }
+  if(!window.PublicKeyCredential) return false;
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const userId = crypto.getRandomValues(new Uint8Array(16));
+  const cred = await navigator.credentials.create({
+    publicKey:{
+      challenge, user:{ id:userId, name:'Обжиг', displayName:'Обжиг' },
+      rp:{ name:'Ритм' }, pubKeyCredParams:[{ type:'public-key', alg:-7 }],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+      timeout:60000, attestation:'none'
+    }
+  });
+  if(cred && cred.id){ S.fpId = cred.id; return true; }
+  return false;
+}
+async function fpVerify(){
+  if(window.Android && window.Android.authenticate){
+    return await new Promise(res => {
+      window.__fpCb = res;
+      window.Android.authenticate('login');
+    });
+  }
+  if(!S.fpId || !window.PublicKeyCredential) return false;
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const cred = await navigator.credentials.get({
+    publicKey:{
+      challenge,
+      allowCredentials:[{ id: unb64uBuf(S.fpId), type:'public-key' }],
+      userVerification:'required', timeout:60000
+    }
+  });
+  return !!cred;
 }
 
 /* ─────────────── ЗАПУСК ─────────────── */

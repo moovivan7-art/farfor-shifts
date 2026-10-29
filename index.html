@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Смена — учёт смен и зарплаты</title>
+<title>Обжиг — учёт смен и зарплаты</title>
 <meta name="theme-color" content="#101116">
-<meta name="description" content="Смена — личный учёт смен, часов и зарплаты для повара FARFOR. PIN-вход, график 2-2, праздники, прогноз выплат, награды.">
+<meta name="description" content="Обжиг — личный учёт смен, часов и зарплаты для команды FARFOR. PIN-вход, свой цикл графика, окна в день, доплаты, прогноз выплат.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Смена">
+<meta name="apple-mobile-web-app-title" content="Обжиг">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -42,7 +42,7 @@
       <circle cx="330" cy="148" r="15" fill="#ffc857"/>
     </svg>
   </div>
-  <h1 class="lock-title" id="lockTitle">Смена</h1>
+  <h1 class="lock-title" id="lockTitle">Обжиг</h1>
   <p class="lock-text" id="lockText">Введи PIN-код</p>
   <div class="lock-name" id="lockNameWrap">
     <input type="text" id="lockName" placeholder="Как тебя звать?" maxlength="24" autocomplete="given-name">
@@ -51,6 +51,7 @@
          placeholder="• • • •" autocomplete="off">
   <div class="lock-hint" id="lockHint"></div>
   <button class="btn primary lock-go" id="lockGo">Войти</button>
+  <button class="btn ghost lock-reset" id="lockFp" style="display:none">☝ Войти по отпечатку</button>
   <button class="btn ghost lock-reset" id="lockReset">Забыл код</button>
 </div>
 
@@ -74,7 +75,7 @@
     </svg>
   </div>
   <div class="tb-txt">
-    <div class="tb-title" id="tbTitle">Смена</div>
+    <div class="tb-title" id="tbTitle">Обжиг</div>
     <div class="tb-sub" id="tbSub">сегодня</div>
   </div>
   <div class="tb-rate"><span id="tbRate">—</span><small>₽/час</small></div>
@@ -129,6 +130,16 @@
       </div>
       <div class="fc-bar"><i id="fcBar"></i></div>
       <div class="fc-note" id="fcNote"></div>
+    </div>
+
+    <div class="card" id="goalCard">
+      <div class="card-h"><h3>План на месяц</h3><span class="pill" id="goalPill">—</span></div>
+      <div id="goalBlock"></div>
+    </div>
+
+    <div class="card" id="vacCard">
+      <div class="card-h"><h3>Вакансия против факта</h3><span class="pill" id="vacPill">—</span></div>
+      <div id="vacBlock" class="break"></div>
     </div>
 
     <div class="card" id="payBreakCard">
@@ -244,6 +255,9 @@
         <div class="card-h"><h3>Доплаты и премии</h3><span class="pill" id="bonusPill">0 ₽</span></div>
         <p class="muted small">Любые доплаты: +10 за план, +10 за скорость, чаевые — всё складывается в одну сумму.</p>
         <div id="bonusItems" class="list"></div>
+        <div class="field"><label>Что за доплата</label>
+          <div class="chips" id="bonusCat"></div>
+        </div>
         <div class="field"><label>Добавить доплату</label>
           <div class="hours-row">
             <input type="text" id="bonusName" placeholder="За что" maxlength="40">
@@ -312,6 +326,7 @@
         <button class="li" data-go="data"><div class="li-d">💾</div><div class="li-t"><b>Данные</b><span>экспорт, импорт, сброс</span></div><div class="li-m">›</div></button>
         <button class="li" data-act="share-link"><div class="li-d">🔗</div><div class="li-t"><b>Ссылка на график</b><span>покажи свой график ссылкой</span></div><div class="li-m">›</div></button>
         <button class="li" data-act="export-ics"><div class="li-d">📆</div><div class="li-t"><b>Календарь (.ics)</b><span>смены в календарь телефона</span></div><div class="li-m">›</div></button>
+        <button class="li" data-act="import-link"><div class="li-d">⇩</div><div class="li-t"><b>Вставить график</b><span>перенести график с сайта по ссылке</span></div><div class="li-m">›</div></button>
         <button class="li" data-act="share-report"><div class="li-d">📤</div><div class="li-t"><b>Поделиться отчётом</b><span>табель в мессенджер</span></div><div class="li-m">›</div></button>
       </div>
     </div>
@@ -345,6 +360,29 @@
         <div><label>Зарплата — какого числа</label>
           <select id="fPayday"><option value="10">10-е</option><option value="15">15-е</option><option value="20">20-е</option><option value="25">25-е</option><option value="31">31-е</option></select>
         </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Вакансия</h3></div>
+      <p class="muted small">Впиши, что обещали на собеседовании. Приложение покажет, сколько реально
+        выходит за час и за месяц — и разницу.</p>
+      <div class="field row2">
+        <div><label>Ставка по вакансии, ₽/час</label><input type="number" id="fVacRate" inputmode="numeric" min="0" step="10"></div>
+        <div><label>Зарплата по вакансии, ₽</label><input type="number" id="fVacSalary" inputmode="numeric" min="0" step="1000"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Цель на месяц</h3></div>
+      <p class="muted small">Сколько хочешь заработать за месяц. Приложение покажет процент и
+        сколько осталось в день.</p>
+      <div class="field"><label>Цель, ₽</label><input type="number" id="fGoal" inputmode="numeric" min="0" step="1000"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Вход по отпечатку</h3><span class="pill" id="fpPill">выключен</span></div>
+      <p class="muted small">Заходишь пальцем, без кода. Код остаётся запасным путём.</p>
+      <div class="quick">
+        <button class="qbtn" data-act="fp-on"><span class="qi">☝</span>Включить</button>
+        <button class="qbtn" data-act="fp-off"><span class="qi">✋</span>Отключить</button>
       </div>
     </div>
     <div class="card">

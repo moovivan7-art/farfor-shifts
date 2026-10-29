@@ -103,11 +103,18 @@ function fxSetSpd(n){
 }
 
 /* ═════════════ 3. ДОПЛАТЫ СПИСКОМ ═════════════ */
+const BONUS_CATS = [
+  { id:'premium', name:'Премия',   hint:'план, качество, скорость' },
+  { id:'trip',    name:'Разъезд',  hint:'дорога, дальняя точка' },
+  { id:'tips',    name:'Чаевые',   hint:'от клиента' },
+  { id:'other',   name:'Другое',   hint:'разовое' }
+];
+let fxBonusCat = 'premium';
 const BONUS_QUICK = [
-  { name:'Выполнил план', amount:10 },
-  { name:'Скорость', amount:10 },
-  { name:'Качество', amount:50 },
-  { name:'Чаевые', amount:100 }
+  { name:'Разъезд', amount:300, cat:'trip' },
+  { name:'Выполнил план', amount:10, cat:'premium' },
+  { name:'Скорость', amount:10, cat:'premium' },
+  { name:'Чаевые', amount:100, cat:'tips' }
 ];
 function fxRenderBonus(){
   const box = qs('#bonusItems');
@@ -118,7 +125,7 @@ function fxRenderBonus(){
   if(pill) pill.textContent = rub(bonusOf(ym));
   box.innerHTML = items.length ? items.map(i =>
     `<div class="li"><div class="li-d">₽</div>
-      <div class="li-t"><b>${esc(i.name || 'Доплата')}</b><span>${i.date ? esc(fmtD(i.date)) : 'за месяц'}</span></div>
+      <div class="li-t"><b>${esc(i.name || 'Доплата')}</b><span>${esc((BONUS_CATS.find(c => c.id === i.cat) || {}).name || 'Доплата')}${i.date ? ' · ' + esc(fmtD(i.date)) : ''}</span></div>
       <div class="li-m">${rub(i.amount)}</div>
       <button class="li-x" data-del="${esc(i.id)}" title="Убрать">✕</button></div>`).join('')
     : '<div class="empty">Пока пусто. Добавь доплаты — всё сложится в одну сумму.</div>';
@@ -137,7 +144,23 @@ function fxRenderBonus(){
       `<button class="chip" data-qi="${i}">${esc(q.name)} +${q.amount}</button>`).join('');
     qsa('#bonusQuick .chip').forEach(c => c.onclick = () => {
       const q = BONUS_QUICK[parseInt(c.dataset.qi,10)];
+      fxBonusCat = q.cat || fxBonusCat;
+      fxRenderBonus();
       fxAddBonus(q.name, q.amount);
+    });
+  }
+  const catBox = qs('#bonusCat');
+  if(catBox){
+    catBox.innerHTML = BONUS_CATS.map(c =>
+      `<button class="chip${c.id === fxBonusCat ? ' on' : ''}" data-cat="${c.id}">${esc(c.name)}</button>`).join('');
+    qsa('#bonusCat .chip').forEach(c => c.onclick = () => {
+      fxBonusCat = c.dataset.cat;
+      const n = qs('#bonusName');
+      if(n && !n.value.trim()){
+        const cat = BONUS_CATS.find(x => x.id === fxBonusCat);
+        n.placeholder = cat ? cat.hint : 'За что';
+      }
+      fxRenderBonus();
     });
   }
 }
@@ -145,7 +168,8 @@ function fxAddBonus(name, amount){
   const ym = currentTabYm();
   const rec = S.bonuses[ym] || { amount:0, note:'', items:[] };
   if(!rec.items) rec.items = [];
-  rec.items.push({ id:'i' + Date.now() + Math.floor(Math.random()*1000), name: name || 'Доплата', amount: parseInt(amount,10) || 0, date: todayISO() });
+  rec.items.push({ id:'i' + Date.now() + Math.floor(Math.random()*1000), name: name || 'Доплата',
+                     cat: fxBonusCat, amount: parseInt(amount,10) || 0, date: todayISO() });
   rec.amount = rec.items.reduce((a,i) => a + (parseInt(i.amount,10) || 0), 0);
   rec.note = rec.items.map(i => i.name).join(', ');
   S.bonuses[ym] = rec;
@@ -202,6 +226,55 @@ function fxAddDeduction(name, amount){
   S.deductions[ym] = rec;
   save(); fxRenderDeductions(); renderTab();
   toast('− ' + rub(amount));
+}
+
+/* ═════════════ 3c. ПЛАН В ПРОЦЕНТАХ И СРАВНЕНИЕ С ВАКАНСИЕЙ ═════════════ */
+function fxRenderGoal(){
+  const box = qs('#goalBlock');
+  if(!box) return;
+  const g = planProgress();
+  const pill = qs('#goalPill');
+  if(!g.goal){ if(pill) pill.textContent = 'не задан'; box.innerHTML = '<p class="muted small">Цель не задана. Поставь её в профиле — приложение будет показывать процент и сколько осталось в день.</p>'; return; }
+  if(pill) pill.textContent = g.pct + '%';
+  const pct = Math.max(0, Math.min(100, g.pct));
+  const col = g.pct >= 100 ? 'var(--green)' : (g.pct >= 70 ? 'var(--acc2)' : 'var(--gold)');
+  box.innerHTML = `
+    <div class="goal-row">
+      <div class="goal-pct"><b class="num" style="color:${col}">${g.pct}%</b><span>плана</span></div>
+      <div class="goal-bar"><i style="width:${pct}%;background:${col}"></i></div>
+    </div>
+    <div class="break">
+      <div class="br"><span>Заработано</span><b>${rub(g.money)}</b></div>
+      <div class="br"><span>Цель</span><b>${rub(g.goal)}</b></div>
+      <div class="br"><span>Осталось</span><b>${rub(g.left)}</b></div>
+      ${g.daysLeft ? `<div class="br"><span>Нужно в день</span><b>${rub(g.perDay)} · осталось ${g.daysLeft} ${plural(g.daysLeft,'день','дня','дней')}</b></div>` : ''}
+    </div>`;
+}
+function fxRenderVac(){
+  const box = qs('#vacBlock');
+  if(!box) return;
+  const v = vacCompare();
+  const pill = qs('#vacPill');
+  if(!v.vacRate && !v.salary){
+    if(pill) pill.textContent = '—';
+    box.innerHTML = '<p class="muted small">Впиши ставку и зарплату из вакансии — и увидишь разницу с фактом.</p>';
+    return;
+  }
+  const dCol = v.dRate < 0 ? 'var(--red)' : 'var(--green)';
+  const sCol = (v.dSal == null) ? 'var(--txt)' : (v.dSal < 0 ? 'var(--red)' : 'var(--green)');
+  let html = '';
+  if(v.vacRate){
+    html += `<div class="br"><span>Ставка по вакансии</span><b>${v.vacRate} ₽/час</b></div>`;
+    html += `<div class="br"><span>Фактическая ставка</span><b>${v.rate} ₽/час</b></div>`;
+    html += `<div class="br"><span>Разница</span><b style="color:${dCol}">${v.dRate > 0 ? '+' : ''}${v.dRate} ₽/час${v.dPct != null ? ' · ' + (v.dPct > 0 ? '+' : '') + v.dPct + '%' : ''}</b></div>`;
+  }
+  if(v.salary){
+    html += `<div class="br"><span>Зарплата по вакансии</span><b>${rub(v.salary)}</b></div>`;
+    html += `<div class="br"><span>Фактически за месяц</span><b>${rub(v.fact)}</b></div>`;
+    html += `<div class="br"><span>Разница</span><b style="color:${sCol}">${v.dSal > 0 ? '+' : ''}${rub(v.dSal)}${v.dSalPct != null ? ' · ' + (v.dSalPct > 0 ? '+' : '') + v.dSalPct + '%' : ''}</b></div>`;
+  }
+  if(v.hours) html += `<div class="br"><span>Выходит в час по факту</span><b>${v.perHour} ₽/час</b></div>`;
+  box.innerHTML = html;
 }
 
 /* ═════════════ 4. РАЗБИВКА ВЫПЛАТ ═════════════ */
@@ -389,12 +462,44 @@ function fxSharePayload(){
   const m = monthRange(ym);
   const days = Object.keys(S.shifts).filter(d => d >= m.from && d <= m.to && S.shifts[d].kind === 'work').sort();
   return b64u(JSON.stringify({
+    v: 1, ym: ym,
     n: S.profile.name || 'Сотрудник',
     p: S.profile.point || '',
     r: S.profile.rate || 0,
     h: S.profile.hours || 13.75,
     s: days.map(d => [d.slice(8), shiftHours(S.shifts[d]), S.shifts[d].bonus || 0])
   }));
+}
+/* ── импорт графика из ссылки (сайт → приложение) ── */
+function unb64u(s){
+  let t = String(s).replace(/-/g,'+').replace(/_/g,'/');
+  while(t.length % 4) t += '=';
+  return decodeURIComponent(escape(atob(t)));
+}
+function fxImportLink(){
+  const inp = prompt('Вставь ссылку на график (из Обжига или с сайта):', '');
+  if(!inp) return;
+  const m = String(inp).match(/g=([A-Za-z0-9\-_]+)/);
+  if(!m){ toast('В ссылке не найден график'); return; }
+  let data;
+  try{ data = JSON.parse(unb64u(m[1])); }catch(e){ toast('Не удалось прочитать график'); return; }
+  if(!data || !data.s){ toast('В ссылке нет графика'); return; }
+  const ym = data.ym || monthKey(todayISO());
+  if(data.n && !confirm(`Перенести график «${data.n}» за ${ym}? Текущие смены этого месяца заменятся.`)) return;
+  let n = 0;
+  Object.keys(S.shifts).forEach(d => { if(d.slice(0,7) === ym) delete S.shifts[d]; });
+  data.s.forEach(x => {
+    const day = String(x[0]).padStart(2,'0');
+    const hours = parseFloat(x[1]) || data.h || S.profile.hours || 13.75;
+    const bonus = parseInt(x[2],10) || 0;
+    S.shifts[ym + '-' + day] = {
+      kind:'work', hours: hours, rate: (data.r || S.profile.rate), bonus: bonus,
+      note:'из Обжига', slot:'day'
+    };
+    n++;
+  });
+  save(); renderAll();
+  toast('Перенесено смен: ' + n);
 }
 function fxShareLink(){
   const base = (S.profile.siteUrl || '').replace(/\/+$/,'');
@@ -441,7 +546,7 @@ function fxICS(){
       lines.push('DTSTAMP:' + dd + 'T000000');
       lines.push('DTSTART:' + dd + 'T' + (st.length === 4 ? st : '0000'));
       lines.push('DTEND:' + endDay + 'T' + (en.length === 4 ? en : '0000'));
-      lines.push('SUMMARY:' + (S.profile.point ? 'Смена · ' + S.profile.point : 'Смена'));
+      lines.push('SUMMARY:' + (S.profile.point ? 'Обжиг · ' + S.profile.point : 'Обжиг'));
       lines.push('DESCRIPTION:Отработано ' + String(pt.hours).replace('.', ',') + ' ч · ' +
         rub(rateOf(sh) * (parseFloat(pt.hours) || 0)));
       lines.push('END:VEVENT');
@@ -521,6 +626,28 @@ function fxInit(){
   const ad = qs('#fAdvDays');
   if(ad) ad.onchange = () => { S.profile.advDays = Math.max(1, Math.min(28, parseInt(ad.value,10) || 20)); save(); renderAll(); };
 
+  /* вакансия и цель */
+  const vr = qs('#fVacRate');
+  if(vr) vr.onchange = () => { S.profile.vacRate = parseInt(vr.value,10) || 0; save(); renderAll(); };
+  const vs = qs('#fVacSalary');
+  if(vs) vs.onchange = () => { S.profile.vacSalary = parseInt(vs.value,10) || 0; save(); renderAll(); };
+  const gl = qs('#fGoal');
+  if(gl) gl.onchange = () => { S.profile.goalMoney = parseInt(gl.value,10) || 0; save(); renderAll(); };
+
+  /* отпечаток пальца */
+  qsa('[data-act="fp-on"]').forEach(b => b.onclick = async () => {
+    const av = await fpAvailable();
+    if(!av){ toast('Отпечаток на устройстве не настроен'); return; }
+    try{
+      const ok = await fpRegister();
+      if(ok){ S.fpOn = true; save(); renderSet(); fxFingerBtn(); toast('Вход по отпечатку включён'); }
+      else toast('Не получилось — вход по коду остаётся');
+    }catch(err){ toast('Отпечаток не сработал'); }
+  });
+  qsa('[data-act="fp-off"]').forEach(b => b.onclick = () => {
+    S.fpOn = false; S.fpId = ''; save(); renderSet(); fxFingerBtn(); toast('Отключено');
+  });
+
   /* напарник */
   const mn = qs('#fMateName');
   if(mn) mn.onchange = () => { S.mate.name = mn.value.trim(); save(); renderAll(); };
@@ -537,6 +664,7 @@ function fxInit(){
   /* копии / отправка */
   qsa('[data-act="copy-month"]').forEach(b => b.onclick = fxCopyMonth);
   qsa('[data-act="share-link"]').forEach(b => b.onclick = fxDoShareLink);
+  qsa('[data-act="import-link"]').forEach(b => b.onclick = fxImportLink);
   qsa('[data-act="export-ics"]').forEach(b => b.onclick = fxExportICS);
   qsa('[data-act="share-report"]').forEach(b => b.onclick = fxShareReport);
 
@@ -562,7 +690,7 @@ function fxInit(){
     fxOpenSheet();
   };
   const _renderHome = renderHome;
-  window.renderHome = function(){ _renderHome(); fxRenderPayBreak(); };
+  window.renderHome = function(){ _renderHome(); fxRenderPayBreak(); fxRenderGoal(); fxRenderVac(); };
   const _renderTab  = renderTab;
   window.renderTab  = function(){ _renderTab(); fxRenderBonus(); fxRenderMate(); fxRenderDeductions(); };
   const _renderSet  = renderSet;
@@ -597,10 +725,23 @@ function fxInit(){
     window.updateSheetSum();
   };
 
-  fxRenderCycle(); fxRenderBonus(); fxRenderPayBreak(); fxRenderMate(); fxFillMateFields();
+  fxFingerBtn();
+  fxRenderCycle(); fxRenderBonus(); fxRenderPayBreak(); fxRenderMate();
+  fxRenderGoal(); fxRenderVac(); fxFillMateFields();
+}
+function fxFingerBtn(){
+  const btn = qs('#lockFp');
+  if(!btn) return;
+  btn.style.display = S.fpOn ? '' : 'none';
+  btn.onclick = async () => {
+    const ok = await fpVerify();
+    if(ok){ toast('Отпечаток принят'); unlockApp(); }
+    else toast('Отпечаток не распознан');
+  };
 }
 function fxRenderAll(){
   fxRenderCycle(); fxRenderBonus(); fxRenderPayBreak(); fxRenderMate(); fxRenderDeductions();
+  fxRenderGoal(); fxRenderVac();
 }
 
 window.fxInit = fxInit;

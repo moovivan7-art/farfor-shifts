@@ -140,7 +140,13 @@ def run():
         print("\n[8] Копии")
         pg.click('.tabbar button[data-tab="cal"]')
         pg.wait_for_timeout(400)
-        pg.on("dialog", lambda d: d.accept())
+        prompt_value = {"v": None}
+        def _handle_dialog(d):
+            if d.type == "prompt" and prompt_value.get("v"):
+                d.accept(prompt_value["v"])
+            else:
+                d.accept()
+        pg.on("dialog", _handle_dialog)
         before = pg.evaluate("() => Object.keys(S.shifts).length")
         pg.click('[data-act="copy-month"]')
         pg.wait_for_timeout(700)
@@ -181,7 +187,56 @@ def run():
         ok("часы и чаевые сохранились",
            money_ok and abs(got.get("hours", 0) - expect_h) < 0.01 and got.get("bonus", 0) == 100, got)
 
-        print("\n[11] Ошибки в консоли")
+        print("\n[11] План, вакансия и перенос графика")
+        pg.click('.tabbar button[data-tab="set"]')
+        pg.wait_for_timeout(300)
+        pg.click('[data-go="profile"]')
+        pg.wait_for_timeout(400)
+        pg.fill("#fVacRate", "320")
+        pg.dispatch_event("#fVacRate", "change")
+        pg.wait_for_timeout(200)
+        pg.fill("#fVacSalary", "60000")
+        pg.dispatch_event("#fVacSalary", "change")
+        pg.wait_for_timeout(200)
+        pg.fill("#fGoal", "70000")
+        pg.dispatch_event("#fGoal", "change")
+        pg.wait_for_timeout(500)
+        vac = pg.evaluate("() => vacCompare()")
+        ok("ставка по вакансии сохранена", vac.get("vacRate") == 320, vac)
+        ok("разница со ставкой посчитана", vac.get("dRate") == -45, vac.get("dRate"))
+        goal = pg.evaluate("() => planProgress()")
+        ok("план в процентах посчитан", goal.get("pct") is not None and goal.get("goal") == 70000, goal)
+        pg.click('[data-back="1"]')
+        pg.wait_for_timeout(500)
+        ok("виджет плана на главном экране", pg.locator("#goalBlock .goal-pct").count() == 1)
+        ok("сравнение с вакансией показано", "Ставка по вакансии" in pg.locator("#vacBlock").inner_text())
+
+        print("\n[12] Перенос графика из ссылки (сайт → приложение)")
+        import base64 as _b64
+        _ym = pg.evaluate("() => monthKey(todayISO())")
+        _days = [[("%02d" % i), 13.75, 0] for i in range(1, 29) if i % 3 != 0]
+        _pl = {"v": 1, "ym": _ym, "n": "\u0422\u0435\u0441\u0442", "p": "\u0423\u0444\u0430",
+               "r": 275, "h": 13.75, "s": _days}
+        payload = _b64.urlsafe_b64encode(json.dumps(_pl, ensure_ascii=False).encode("utf-8")).decode().rstrip("=")
+        prompt_value["v"] = "https://site/#g=" + payload
+        pg.click('[data-act="import-link"]')
+        pg.wait_for_timeout(1500)
+        print("    тост:", pg.evaluate("() => (document.querySelector('#toast')||{}).textContent"))
+        imported = pg.evaluate("() => { const k = Object.keys(S.shifts); return k.length; }")
+        ok("график из ссылки перенёсся", imported > 0, imported)
+        note_ok = pg.evaluate("() => Object.values(S.shifts).some(v => (v.note || '').indexOf('Обжиг') >= 0)")
+        ok("в смене отмечено, что из Обжига", note_ok)
+
+        print("\n[13] Отпечаток")
+        fp_btn = pg.locator("#lockFp")
+        ok("кнопка отпечатка есть на экране входа", fp_btn.count() == 1)
+        pg.click('.tabbar button[data-tab="set"]')
+        pg.wait_for_timeout(300)
+        pg.click('[data-go="profile"]')
+        pg.wait_for_timeout(400)
+        ok("переключатель отпечатка есть в профиле", pg.locator('[data-act="fp-on"]').count() == 1)
+
+        print("\n[14] Ошибки в консоли")
         real = [e for e in errors if "favicon" not in e.lower()]
         ok("критических ошибок нет", len(real) == 0, real[:3])
 
