@@ -117,7 +117,17 @@ function initGate(){
   }
 }
 function downloadApk(){
-  const url = SITE.siteUrl ? (SITE.siteUrl.replace(/\/+$/,'') + '/' + SITE.apk) : SITE.apk;
+  const base = SITE.siteUrl ? SITE.siteUrl.replace(/\/+$/,'') + '/' : '';
+  const direct = base + SITE.apk;
+  const zipped = base + SITE.apkZip;
+  // некоторые хостинги блокируют .apk — тогда отдаём .zip-обёртку
+  if(window.fetch){
+    fetch(direct, { method:'HEAD' }).then(r => {
+      go(r.ok ? direct : zipped);
+    }).catch(() => go(zipped));
+  }else go(direct);
+}
+function go(url){
   const a = document.createElement('a');
   a.href = url; a.download = '';
   document.body.appendChild(a); a.click(); a.remove();
@@ -274,9 +284,12 @@ function initBuilder(){
 
   /* листание месяцев */
   const nav = document.createElement('div');
-  nav.style.cssText = 'display:flex;gap:8px;align-items:center';
   nav.innerHTML = '<button class="btn g s" id="mPrev">‹</button><button class="btn g s" id="mNext">›</button>';
-  $('#monthTitle').parentNode.insertBefore(nav, $('#monthTitle').nextSibling);
+  const row = document.createElement('div');
+  row.className = 'mrow';
+  const title = $('#monthTitle');
+  row.appendChild(title); row.appendChild(nav);
+  title.parentNode.insertBefore(row, title);
   $('#mPrev').onclick = () => { const d = new Date(+state.viewYm.slice(0,4), +state.viewYm.slice(5,7)-2, 1); state.viewYm = isoD(d).slice(0,7); renderBuilder(); };
   $('#mNext').onclick = () => { const d = new Date(+state.viewYm.slice(0,4), +state.viewYm.slice(5,7), 1); state.viewYm = isoD(d).slice(0,7); renderBuilder(); };
 

@@ -25,6 +25,9 @@ android {
         storePassword = keystoreProps.getProperty("storePassword")
         keyAlias = keystoreProps.getProperty("keyAlias")
         keyPassword = keystoreProps.getProperty("keyPassword")
+        enableV1Signing = false
+        enableV2Signing = true
+        enableV3Signing = true
       }
     }
   }

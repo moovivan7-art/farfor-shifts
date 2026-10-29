@@ -72,10 +72,18 @@ with sync_playwright() as p:
     b.close()
 
 
-def crop_phone(im):
-    """верх телефона с шапкой и героем — для hero.gif"""
-    w, h = im.size
-    return im.crop((0, 0, w, int(h * 0.62))).convert("RGB")
+def crop_phone(im, size=(390, 820)):
+    """экран телефона целиком — для hero.gif"""
+    return im.convert("RGB").resize(size, Image.LANCZOS)
+
+
+def save_gif(frames, path, duration=100, colors=128):
+    """сохраняет GIF с общей палитрой — чтобы не мигал и не весил много"""
+    pal = frames[0].convert("RGB").quantize(colors=colors, method=Image.MEDIANCUT)
+    conv = [f.convert("RGB").quantize(palette=pal, dither=Image.FLOYDSTEINBERG) for f in frames]
+    conv[0].save(path, save_all=True, append_images=conv[1:], duration=duration, loop=0,
+                 optimize=True, disposal=2)
+    return path
 
 
 def crossfade(a, b, steps=8):
@@ -91,39 +99,36 @@ def build_hero():
     seq = ["home", "cal", "sched", "tab", "home"]
     frames = []
     for i in range(len(seq) - 1):
-        a = crop_phone(shots[seq[i]]).resize((390, 520), Image.LANCZOS)
-        b = crop_phone(shots[seq[i + 1]]).resize((390, 520), Image.LANCZOS)
-        frames += crossfade(a, b, 10)
-    frames += [crop_phone(shots["home"]).resize((390, 520), Image.LANCZOS)] * 14
-    frames = frames[::1]
+        a = crop_phone(shots[seq[i]])
+        b = crop_phone(shots[seq[i + 1]])
+        frames += crossfade(a, b, 7)
+    frames += [crop_phone(shots["home"])] * 10
     out = os.path.join(SITE, "hero.gif")
-    frames[0].save(out, save_all=True, append_images=frames[1:], duration=90, loop=0,
-                   optimize=True, disposal=2)
+    save_gif(frames, out, 100)
     print("hero.gif", os.path.getsize(out) // 1024, "KB", len(frames), "кадров")
 
 
 def build_demo():
     """широкая демонстрация: два экрана рядом + плавный зум"""
-    W, H = 880, 520
-    left = shots["home"].resize((390, 844), Image.LANCZOS).crop((0, 0, 390, 520))
-    right = shots["tab"].resize((390, 844), Image.LANCZOS).crop((0, 0, 390, 520))
+    W, H = 760, 430
+    left = shots["home"].resize((340, 736), Image.LANCZOS).crop((0, 0, 340, 430))
+    right = shots["tab"].resize((340, 736), Image.LANCZOS).crop((0, 0, 340, 430))
     bg = Image.new("RGB", (W, H), (10, 11, 15))
     d = ImageDraw.Draw(bg)
     for x in range(0, W, 40):
         d.line([(x, 0), (x, H)], fill=(255, 255, 255, 8))
     lx, rx = 40, W - 390 - 40
     frames = []
-    for k in range(30):
-        z = 1 + 0.035 * math.sin(k / 30 * math.pi * 2)
-        l = left.resize((int(390 * z), int(520 * z)), Image.LANCZOS)
-        r = right.resize((int(390 * z), int(520 * z)), Image.LANCZOS)
+    for k in range(18):
+        z = 1 + 0.035 * math.sin(k / 18 * math.pi * 2)
+        l = left.resize((int(340 * z), int(430 * z)), Image.LANCZOS)
+        r = right.resize((int(340 * z), int(430 * z)), Image.LANCZOS)
         canvas = bg.copy()
-        canvas.paste(l, (lx - (390 * z - 390) // 2, (H - 520 * z) // 2))
-        canvas.paste(r, (rx - (390 * z - 390) // 2, (H - 520 * z) // 2))
+        canvas.paste(l, (int(lx - (340 * z - 340) // 2), int((H - 430 * z) // 2)))
+        canvas.paste(r, (int(rx - (340 * z - 340) // 2), int((H - 430 * z) // 2)))
         frames.append(canvas.convert("RGB"))
     out = os.path.join(SITE, "demo.gif")
-    frames[0].save(out, save_all=True, append_images=frames[1:], duration=110, loop=0,
-                   optimize=True, disposal=2)
+    save_gif(frames, out, 120)
     print("demo.gif", os.path.getsize(out) // 1024, "KB")
 
 
@@ -131,19 +136,18 @@ def build_split():
     """крупный план карточки «Разбивка выплат»"""
     home = shots["home"].convert("RGB")
     w, h = home.size
-    card = home.crop((0, int(h * 0.30), w, int(h * 0.60)))
-    card = card.resize((760, int(card.size[1] * 760 / card.size[0])), Image.LANCZOS)
+    card = home.crop((0, int(h * 0.30), w, int(h * 0.62)))
+    card = card.resize((680, int(card.size[1] * 680 / card.size[0])), Image.LANCZOS)
     frames = []
-    for k in range(24):
-        z = 1 + 0.05 * math.sin(k / 24 * math.pi * 2)
+    for k in range(16):
+        z = 1 + 0.05 * math.sin(k / 16 * math.pi * 2)
         w2, h2 = int(card.size[0] * z), int(card.size[1] * z)
         c = card.resize((w2, h2), Image.LANCZOS)
-        canvas = Image.new("RGB", (760, int(card.size[1] * 1.08)), (10, 11, 15))
-        canvas.paste(c, ((760 - w2) // 2, (canvas.size[1] - h2) // 2))
+        canvas = Image.new("RGB", (680, int(card.size[1] * 1.1)), (10, 11, 15))
+        canvas.paste(c, (int((680 - w2) // 2), int((canvas.size[1] - h2) // 2)))
         frames.append(canvas)
     out = os.path.join(SITE, "split.gif")
-    frames[0].save(out, save_all=True, append_images=frames[1:], duration=110, loop=0,
-                   optimize=True, disposal=2)
+    save_gif(frames, out, 120)
     print("split.gif", os.path.getsize(out) // 1024, "KB")
 
 

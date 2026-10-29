@@ -23,10 +23,10 @@ OUT="$ROOT/android/app/build/outputs/apk/release"
 
 echo "▸ иконки"
 python3 tools/make_icon_v2.py >/dev/null
-python3 - <<'PY'
+python3 - "$ROOT" <<'PY'
 from PIL import Image
-import os
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import os, sys
+BASE = sys.argv[1]
 src = Image.open(f"{BASE}/assets/icon-512.png").convert("RGBA")
 dens = {"mdpi":48, "hdpi":72, "xhdpi":96, "xxhdpi":144, "xxxhdpi":192}
 for d, px in dens.items():

@@ -351,13 +351,25 @@ body[data-theme="light"] .stat{background:linear-gradient(160deg,#fff,rgba(248,2
 body[data-theme="light"] .day{background:#eeeae4}
 body[data-theme="light"] .day.off{background:#f6f3ef}
 body[data-theme="light"] .day.wknd{background:#e9e4dd;color:var(--mut2)}
-body[data-theme="light"] .li,.qbtn,.chip,.pat,.badge,.pv{background:#f3efea}
-body[data-theme="light"] .field input,.qbtn,.chip,.pat,.nav,.hours-row input{background:#fff}
+body[data-theme="light"] .li,
+body[data-theme="light"] .qbtn,
+body[data-theme="light"] .chip,
+body[data-theme="light"] .pat,
+body[data-theme="light"] .badge,
+body[data-theme="light"] .pv{background:#f3efea}
+body[data-theme="light"] .field input,
+body[data-theme="light"] .qbtn,
+body[data-theme="light"] .chip,
+body[data-theme="light"] .pat,
+body[data-theme="light"] .nav,
+body[data-theme="light"] .hours-row input{background:#fff}
 body[data-theme="light"] .sheet{background:#fbf9f6}
 body[data-theme="light"] .txtbox{color:#2a2d34;background:#f3efea}
 body[data-theme="light"] .day.work{color:#fff}
 body[data-theme="light"] .tb-rate span{color:var(--acc)}
-body[data-theme="light"] .forecast .fc-row.big b,.li-m,.sh-sum b{color:var(--acc)}
+body[data-theme="light"] .forecast .fc-row.big b,
+body[data-theme="light"] .li-m,
+body[data-theme="light"] .sh-sum b{color:var(--acc)}
 
 @media(min-width:600px){
   .grid4{grid-template-columns:repeat(4,1fr)}

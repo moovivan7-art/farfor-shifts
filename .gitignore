@@ -1,4 +1,6 @@
 android/keystore.properties
+tools/notify.config.json
+notify.out.txt
 *.keystore
 *.jks
 android/app/build/

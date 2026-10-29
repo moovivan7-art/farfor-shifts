@@ -17,7 +17,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
 
 def serve():
     handler = functools.partial(Quiet, directory=SITE_DIR)
-    httpd = socketserver.TCPServer(("127.0.0.1", 8123), handler)
+    socketserver.TCPServer.allow_reuse_address = True
+    httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)   # порт выбираем свободный
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     return httpd
 CHROME = os.environ.get("CHROME_PATH", "/usr/bin/chromium")
@@ -33,7 +34,8 @@ def ok(name, cond, extra=""):
 CODE = "SMENA-F76"
 
 SRV = serve()
-SITE = "http://127.0.0.1:8123/index.html"
+PORT = SRV.server_address[1]
+SITE = "http://127.0.0.1:%d/index.html" % PORT
 
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path=CHROME, args=["--no-sandbox", "--disable-gpu",
