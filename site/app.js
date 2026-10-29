@@ -288,8 +288,10 @@ function initBuilder(){
   const row = document.createElement('div');
   row.className = 'mrow';
   const title = $('#monthTitle');
-  row.appendChild(title); row.appendChild(nav);
-  title.parentNode.insertBefore(row, title);
+  const host = title.parentNode;
+  host.insertBefore(row, title);
+  row.appendChild(title);
+  row.appendChild(nav);
   $('#mPrev').onclick = () => { const d = new Date(+state.viewYm.slice(0,4), +state.viewYm.slice(5,7)-2, 1); state.viewYm = isoD(d).slice(0,7); renderBuilder(); };
   $('#mNext').onclick = () => { const d = new Date(+state.viewYm.slice(0,4), +state.viewYm.slice(5,7), 1); state.viewYm = isoD(d).slice(0,7); renderBuilder(); };
 
