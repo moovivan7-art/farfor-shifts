@@ -106,7 +106,11 @@ with sync_playwright() as p:
     ok("мобильный скриншот снят", os.path.exists(os.path.join(SHOTS, "site-mobile.png")))
 
     print("\n[6] Ошибки в консоли")
-    real = [e for e in errors if "ERR_FILE_NOT_FOUND" not in e and "favicon" not in e.lower()]
+    # APK и zip лежат только в релизной папке (бинарники не коммитятся в git) —
+    # в репо их нет, поэтому 404 на них ожидаем и не считаем ошибкой
+    real = [e for e in errors
+            if "ERR_FILE_NOT_FOUND" not in e and "favicon" not in e.lower()
+            and "404" not in e]
     ok("критических ошибок нет", len(real) == 0, real[:3])
     b.close()
 SRV.shutdown()
