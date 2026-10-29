@@ -577,11 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* если .gif не найден (например, репозиторий без бинарников) —
    подставляем анимацию из текстовой копии */
-window.fxGifFallback = function(img, name){
-  const file = 'assets/' + name + '.gif.b64.txt';
-  fetch(file).then(r => r.ok ? r.text() : Promise.reject('no file')).then(txt => {
-    const b64 = txt.replace(/\s+/g, '');
-    if(!b64) return;
-    img.src = 'data:image/gif;base64,' + b64;
-  }).catch(() => { img.style.opacity = '0'; });
+window.fxGifFallback = function(img){
+  /* .gif недоступен (репозиторий без бинарников) — ставим вшитый постер */
+  img.src = getComputedStyle(document.documentElement).getPropertyValue('--poster').trim().replace(/^url\(['"]?|['"]?\)$/g, '');
+  img.onerror = null;
 };
