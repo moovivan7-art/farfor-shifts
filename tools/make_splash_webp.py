@@ -9,8 +9,16 @@ SRC="file://"+os.path.join(BASE,"tools","splash_source.html")
 OUT=os.path.join(BASE,"assets","splash.webp")
 W,H=1440,2560; DUR=4200; STEP=50   # 70 кадров ≈ 12 кадров/сек
 frames=[]
+CHROME = os.environ.get("CHROME_PATH", "/usr/bin/chromium")
+def launch(p):
+    """Системный chromium, если нет штатного браузера playwright."""
+    args = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+    try:
+        return p.chromium.launch(executable_path=CHROME, args=args)
+    except Exception:
+        return p.chromium.launch(args=["--no-sandbox"])
 with sync_playwright() as p:
-    b=p.chromium.launch(args=["--no-sandbox"])
+    b=launch(p)
     pg=b.new_page(viewport={"width":W,"height":H}, device_scale_factor=1)
     pg.goto(SRC); pg.wait_for_timeout(400)
     pg.evaluate("()=>document.getAnimations().forEach(a=>a.pause())")

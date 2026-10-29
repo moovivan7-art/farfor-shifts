@@ -131,6 +131,11 @@
       <div class="fc-note" id="fcNote"></div>
     </div>
 
+    <div class="card" id="payBreakCard">
+      <div class="card-h"><h3>Разбивка выплат</h3><span class="pill" id="pbMode">—</span></div>
+      <div id="payBreak" class="break"></div>
+    </div>
+
     <div class="card">
       <div class="card-h"><h3>Быстрые действия</h3></div>
       <div class="quick">
@@ -167,6 +172,7 @@
       <div class="cal-actions">
         <button class="btn ghost" data-cal="fill">Заполнить по графику</button>
         <button class="btn ghost" data-cal="clear">Очистить месяц</button>
+        <button class="btn ghost" data-act="copy-month">⧉ Копировать месяц</button>
       </div>
     </div>
   </section>
@@ -177,6 +183,27 @@
       <div class="card-h"><h3>Мой график</h3><span class="pill" id="schedPill">2-2</span></div>
       <p class="muted small">Выбери паттерн — приложение расставит смены по календарю и посчитает зарплату.</p>
       <div class="pats" id="pats"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Свой цикл</h3><span class="pill" id="cyclePill">2-2</span></div>
+      <p class="muted small">Любой ритм: сколько дней работаешь и сколько отдыхаешь. Например
+        <b>1/1, 2/2, 3/3</b> — или все вместе, «лесенкой». Считается и зарплата, и аванс.</p>
+      <div class="field"><label>Работа / отдых, через запятую</label>
+        <div class="hours-row">
+          <input type="text" id="cycleInput" placeholder="1/1, 2/2, 3/3" maxlength="60">
+          <button class="btn primary" id="cycleApply">Ок</button>
+        </div>
+      </div>
+      <div class="chips" id="cycleChips"></div>
+      <div id="cycleViz" style="margin:14px 0 4px"></div>
+      <div class="field"><label>Окон в день (двойная смена)</label>
+        <div class="chips" id="spdChips">
+          <button class="chip" data-spd="1">1 окно</button>
+          <button class="chip" data-spd="2">2 окна</button>
+          <button class="chip" data-spd="3">3 окна</button>
+        </div>
+      </div>
+      <button class="btn ghost" id="cycleReset" style="width:100%">Сбросить к 2-2</button>
     </div>
     <div class="card">
       <div class="card-h"><h3>Настройки графика</h3></div>
@@ -213,6 +240,36 @@
       </div>
       <button class="btn ghost" data-act="add-bonus" style="width:100%;margin-bottom:12px">+ Премия за месяц (бонус, доплата)</button>
       <div id="bonusLine"></div>
+      <div class="card" id="bonusCard" style="margin:0 0 14px">
+        <div class="card-h"><h3>Доплаты и премии</h3><span class="pill" id="bonusPill">0 ₽</span></div>
+        <p class="muted small">Любые доплаты: +10 за план, +10 за скорость, чаевые — всё складывается в одну сумму.</p>
+        <div id="bonusItems" class="list"></div>
+        <div class="field"><label>Добавить доплату</label>
+          <div class="hours-row">
+            <input type="text" id="bonusName" placeholder="За что" maxlength="40">
+            <input type="number" id="bonusAmt" placeholder="₽" inputmode="numeric" style="max-width:104px">
+            <button class="btn primary" id="bonusAdd">+</button>
+          </div>
+        </div>
+        <div class="chips" id="bonusQuick"></div>
+      </div>
+      <div class="card" id="mateCard" style="margin:0 0 14px">
+        <div class="card-h"><h3>Напарник</h3><span class="pill" id="matePill">—</span></div>
+      </div>
+      <div class="card" id="deductionsCard" style="margin:0 0 14px">
+        <div class="card-h"><h3>Списания и штрафы</h3><span class="pill" id="deductionPill">− 0 ₽</span></div>
+        <p class="muted small">Если прилетел штраф или удержали — запиши сюда. Видно, сколько заработал
+          и сколько забрали, и ничего не теряется «в воздухе».</p>
+        <div id="deductionsList" class="list"></div>
+        <div class="field"><label>Добавить списание</label>
+          <div class="hours-row">
+            <input type="text" id="dedName" placeholder="За что" maxlength="40">
+            <input type="number" id="dedAmt" placeholder="₽" inputmode="numeric" style="max-width:104px">
+            <button class="btn primary" id="dedAdd">+</button>
+          </div>
+        </div>
+        <div class="chips" id="dedQuick"></div>
+      </div>
       <div id="tabTitle" class="muted small" style="margin-bottom:10px;font-weight:600"></div>
       <div id="tabList" class="list"></div>
       <div class="cal-sum" id="tabSum" style="margin-top:14px"></div>
@@ -253,6 +310,9 @@
         <button class="li" data-go="badges"><div class="li-d">🏅</div><div class="li-t"><b>Награды</b><span>за смены, часы и деньги</span></div><div class="li-m">›</div></button>
         <button class="li" data-go="guide"><div class="li-d">📖</div><div class="li-t"><b>Как считать</b><span>инструкция и формулы</span></div><div class="li-m">›</div></button>
         <button class="li" data-go="data"><div class="li-d">💾</div><div class="li-t"><b>Данные</b><span>экспорт, импорт, сброс</span></div><div class="li-m">›</div></button>
+        <button class="li" data-act="share-link"><div class="li-d">🔗</div><div class="li-t"><b>Ссылка на график</b><span>покажи свой график ссылкой</span></div><div class="li-m">›</div></button>
+        <button class="li" data-act="export-ics"><div class="li-d">📆</div><div class="li-t"><b>Календарь (.ics)</b><span>смены в календарь телефона</span></div><div class="li-m">›</div></button>
+        <button class="li" data-act="share-report"><div class="li-d">📤</div><div class="li-t"><b>Поделиться отчётом</b><span>табель в мессенджер</span></div><div class="li-m">›</div></button>
       </div>
     </div>
     <div class="card">
@@ -286,6 +346,34 @@
           <select id="fPayday"><option value="10">10-е</option><option value="15">15-е</option><option value="20">20-е</option><option value="25">25-е</option><option value="31">31-е</option></select>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Правило выплат</h3></div>
+      <p class="muted small">Как считать аванс. Вариант «% от первых дней» — если из заработка за первые дни месяца
+        часть уходит в аванс, а остальное в премию и выплачивается с зарплатой.</p>
+      <div class="field"><label>Режим</label>
+        <div class="chips" id="payModeChips">
+          <button class="chip" data-pm="half">По половине месяца</button>
+          <button class="chip" data-pm="pct">% от первых дней</button>
+        </div>
+      </div>
+      <div class="field row2">
+        <div><label>В аванс, %</label><input type="number" id="fAdvPct" inputmode="numeric" min="0" max="100" step="5"></div>
+        <div><label>Окно, дней</label><input type="number" id="fAdvDays" inputmode="numeric" min="1" max="28" step="1"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Напарник</h3></div>
+      <p class="muted small">Если смену делите вдвоём — у каждого свои часы и свои деньги. Приложение посчитает обоих.</p>
+      <div class="field row2">
+        <div><label>Имя напарника</label><input type="text" id="fMateName" placeholder="Дима" maxlength="24"></div>
+        <div><label>Его ставка, ₽/час</label><input type="number" id="fMateRate" inputmode="numeric" min="0" step="10"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Ссылка на сайт</h3></div>
+      <p class="muted small">Адрес сайта, куда приложение отправляет твой график ссылкой. Оставь пустым — будет просто текст.</p>
+      <div class="field"><label>URL сайта</label><input type="text" id="fSiteUrl" placeholder="https://..." maxlength="120"></div>
     </div>
     <div class="card">
       <div class="card-h"><h3>Вход по PIN</h3><span class="pill" id="pinPill">выключен</span></div>
@@ -472,6 +560,16 @@
         </div>
       </div>
       <div class="field" id="slotField"><label>Время смены</label><div class="chips" id="slotChips"></div></div>
+      <div class="field" id="partsBlock"><label>Окна смены</label>
+        <div id="partsList"></div>
+        <button class="btn ghost" id="addPart" type="button" style="width:100%;margin-top:8px">+ ещё окно (двойная смена)</button>
+      </div>
+      <div class="field" id="mateField" style="display:none"><label>Кто работает</label>
+        <div class="chips" id="mateChips">
+          <button class="chip on" data-who="me">Я</button>
+          <button class="chip" data-who="mate">Напарник</button>
+        </div>
+      </div>
       <div class="field" id="shortField"><label>Предпраздничный день</label>
         <div class="chips" id="shortChips">
           <button class="chip on" data-short="1">Минус 1 час</button>
@@ -486,13 +584,32 @@
       <div class="sh-sum" id="shSum"></div>
       <div class="sh-actions">
         <button class="btn ghost" id="shDel">Удалить</button>
+        <button class="btn ghost" id="copyShift" type="button">⧉ Копировать</button>
         <button class="btn primary" id="shSave">Сохранить</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ══════════ ОКНО КОПИРОВАНИЯ ══════════ -->
+<div class="sheet-wrap" id="copyWrap">
+  <div class="sheet-bg" id="copyBg"></div>
+  <div class="sheet">
+    <div class="sh-head">
+      <div>
+        <div class="sh-date">Копировать смену</div>
+        <div class="sh-hol">выбери дни — смена скопируется как есть</div>
+      </div>
+      <button class="sh-x" id="copyClose">✕</button>
+    </div>
+    <div class="sh-body">
+      <div id="copyList" class="list"></div>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 <script src="app.js"></script>
+<script src="app-fx.js"></script>
 </body>
 </html>

@@ -14,8 +14,17 @@ OUT = os.path.join(BASE, "assets", "splash.gif")
 DUR, STEP, W, H = 3600, 40, 480, 480
 
 raw = []
+CHROME = os.environ.get("CHROME_PATH", "/usr/bin/chromium")
+def launch(p):
+    """Системный chromium, если нет штатного браузера playwright."""
+    args = ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"]
+    try:
+        return p.chromium.launch(executable_path=CHROME, args=args)
+    except Exception:
+        return p.chromium.launch(args=["--no-sandbox"])
+
 with sync_playwright() as p:
-    b = p.chromium.launch(args=["--no-sandbox"])
+    b = launch(p)
     pg = b.new_page(viewport={"width": W, "height": H})
     pg.goto(APP); pg.wait_for_timeout(300)
     pg.add_style_tag(content="#app,.topbar,.tabbar{display:none!important}")

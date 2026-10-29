@@ -263,7 +263,7 @@ main{padding:18px 16px calc(var(--tb) + var(--sb) + 30px);max-width:660px;margin
   border-radius:16px;padding:16px;text-align:center;margin:6px 0 16px}
 .sh-sum b{font-size:27px;font-weight:800;color:var(--acc2);font-family:'Montserrat','Inter',sans-serif;letter-spacing:-.6px}
 .sh-sum span{font-size:13px;color:var(--mut);display:block;margin-top:4px;font-weight:600}
-.sh-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+.sh-actions{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px}
 .hours-row{display:flex;align-items:center;gap:10px;margin-top:10px}
 .hours-row input{width:100px;text-align:center;font-weight:800;background:var(--card2);border:1.5px solid var(--line2);border-radius:13px;padding:11px;font-size:17px;outline:none}
 .hours-row span{font-size:12.5px;color:var(--mut2);font-weight:600}
@@ -389,3 +389,28 @@ body[data-theme="light"] .forecast .fc-row.big b,.li-m,.sh-sum b{color:var(--acc
 .lock-reset{width:100%;max-width:320px;margin-top:10px;background:transparent;border:none;color:var(--mut2);font-size:14px}
 body[data-theme="light"] .lock{background:#f4f1ed}
 body[data-theme="light"] .lock-name input,body[data-theme="light"] .lock-pin{background:#fff;border-color:var(--line2)}
+
+/* ═══════════ v1.4: свой цикл, окна смены, доплаты, напарник ═══════════ */
+.cyc-strip{display:flex;gap:4px;flex-wrap:wrap;background:var(--card2);border:1px solid var(--line);
+  border-radius:14px;padding:10px}
+.cyc-strip i{width:20px;height:26px;border-radius:6px;display:block;background:#333845}
+.cyc-strip i.w{background:linear-gradient(160deg,var(--acc),#cf3d00);box-shadow:0 3px 8px -4px rgba(254,80,0,.9)}
+.part{background:var(--card2);border:1px solid var(--line2);border-radius:14px;padding:11px;margin-bottom:9px}
+.part .chips{margin-bottom:9px}
+.part .chips .chip{padding:8px 11px;font-size:12.5px}
+.part .hours-row{margin-top:0}
+.part .hours-row input{width:92px}
+.li-x{width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:var(--card3);border:1px solid var(--line2);
+  color:var(--mut2);font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.li-x:active{color:var(--red);border-color:var(--red)}
+.li-btn{width:100%;text-align:left}
+.li-btn:active{background:var(--card3)}
+.br-total{border-bottom:none;padding-bottom:0;font-size:15px;color:var(--txt)}
+.br-total b{color:var(--acc2);font-size:17px}
+#bonusName{width:auto;flex:1;min-width:0;text-align:left!important;font-size:15px!important}
+#bonusAmt{width:104px}
+#cycleInput{width:100%}
+.sh-actions{grid-template-columns:1fr 1fr 2fr}
+.hours-row input[type=text]{text-align:left}
+#dedName{width:auto;flex:1;min-width:0;text-align:left!important;font-size:15px!important}
+#dedAmt{width:104px}

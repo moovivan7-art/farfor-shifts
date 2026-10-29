@@ -55,6 +55,9 @@ const PATTERNS = [
   { id:'2-2', w:2, o:2, desc:'классика: 2 смены — 2 дня' },
   { id:'2-3', w:2, o:3, desc:'2 смены — 3 дня дома' },
   { id:'3-3', w:3, o:3, desc:'три смены — три дня' },
+  { id:'2-1', w:2, o:1, desc:'2 смены — день дома' },
+  { id:'3-1', w:3, o:1, desc:'3 смены — день дома' },
+  { id:'4-2', w:4, o:2, desc:'4 смены — 2 дня дома' },
   { id:'5-2', w:5, o:2, desc:'пятидневка' },
   { id:'6-1', w:6, o:1, desc:'шестидневка' },
   { id:'7-1', w:7, o:1, desc:'через день' }
@@ -63,10 +66,13 @@ const PATTERNS = [
 /* ─────────────── ХРАНИЛИЩЕ ─────────────── */
 const DEFAULTS = {
   profile: { name:'', rate:275, hours:13.75, point:'', advance:1, payday:15,
-             nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45' },
+             nightPct:0, holPct:0, shiftStart:'10:00', shiftEnd:'23:45',
+             payMode:'half', advPct:40, advDays:20, siteUrl:'' },
   shifts: {},
   bonuses: {},
-  plan: { pattern:'2-2', start:'', hours:13.75, shortMode:'6' },
+  deductions: {},
+  plan: { pattern:'2-2', start:'', hours:13.75, shortMode:'6', cycle:'', shiftsPerDay:1 },
+  mate: { name:'', rate:0, hours:13.75, shifts:{} },
   ui: { range:'month', theme:'dark', tabRange:'month', fs:17, sound:1, wall:'' },
   onboarded:false
 };
@@ -81,7 +87,9 @@ function load(){
       profile: Object.assign({}, DEFAULTS.profile, p.profile || {}),
       shifts: p.shifts || {},
       bonuses: p.bonuses || {},
+      deductions: p.deductions || {},
       plan: Object.assign({}, DEFAULTS.plan, p.plan || {}),
+      mate: Object.assign({}, DEFAULTS.mate, p.mate || {}, { shifts: (p.mate && p.mate.shifts) || {} }),
       ui: Object.assign({}, DEFAULTS.ui, p.ui || {}),
       onboarded: !!p.onboarded,
       pin: p.pin || ''
@@ -172,13 +180,29 @@ const fmtHours = h => {
   return mm ? `${hh} ч ${mm} мин` : `${hh} ч`;
 };
 const getShift = d => S.shifts[d] || null;
+const getMateShift = d => (S.mate && S.mate.shifts && S.mate.shifts[d]) || null;
+function shiftHours(sh){
+  if(!sh) return 0;
+  if(sh.parts && sh.parts.length) return sh.parts.reduce((a,pt) => a + (parseFloat(pt.hours) || 0), 0);
+  return parseFloat(sh.hours) || 0;
+}
 function shiftMoney(sh, date){
   if(!sh || sh.kind !== 'work') return 0;
   const d = date || '';
-  const base = ((sh.rate === null || sh.rate === undefined) ? S.profile.rate : sh.rate) * (sh.hours || 0);
-  let add = 0;
-  const slot = SLOTS.find(s => s.id === (sh.slot || 'day'));
-  if(slot && slot.night) add += base * (S.profile.nightPct || 0) / 100;
+  const rate = ((sh.rate === null || sh.rate === undefined) ? S.profile.rate : sh.rate);
+  let base = 0, add = 0;
+  if(sh.parts && sh.parts.length){
+    sh.parts.forEach(pt => {
+      const h = parseFloat(pt.hours) || 0;
+      base += rate * h;
+      const slot = SLOTS.find(s => s.id === (pt.slot || 'day'));
+      if(slot && slot.night) add += rate * h * (S.profile.nightPct || 0) / 100;
+    });
+  }else{
+    base = rate * (parseFloat(sh.hours) || 0);
+    const slot = SLOTS.find(s => s.id === (sh.slot || 'day'));
+    if(slot && slot.night) add += base * (S.profile.nightPct || 0) / 100;
+  }
   if(d && isHoliday(d)) add += base * (S.profile.holPct || 0) / 100;
   return base + add + (sh.bonus || 0);
 }
@@ -186,17 +210,34 @@ function rangeSum(from, to){
   let money_ = 0, hours = 0, shifts = 0;
   for(const [d, sh] of Object.entries(S.shifts)){
     if(d < from || d > to) continue;
-    if(sh.kind === 'work'){ money_ += shiftMoney(sh, d); hours += sh.hours || 0; shifts++; }
+    if(sh.kind === 'work'){ money_ += shiftMoney(sh, d); hours += shiftHours(sh); shifts++; }
   }
   return { money: money_, hours, shifts };
 }
 function monthKey(d){ return d.slice(0,7); }
-function bonusOf(ym){ return (S.bonuses && S.bonuses[ym] && S.bonuses[ym].amount) || 0; }
+function bonusItems(ym){
+  const b = S.bonuses && S.bonuses[ym];
+  if(!b) return [];
+  if(b.items && b.items.length) return b.items;
+  if(b.amount || b.note) return [{ id:'legacy', name:b.note || 'Премия', amount:b.amount || 0, date:'' }];
+  return [];
+}
+function bonusOf(ym){ return bonusItems(ym).reduce((a,i) => a + (parseInt(i.amount,10) || 0), 0); }
+function deductionItems(ym){
+  const d = S.deductions && S.deductions[ym];
+  if(!d) return [];
+  if(d.items && d.items.length) return d.items;
+  if(d.amount || d.note) return [{ id:'legacy', name:d.note || 'Списание', amount:d.amount || 0, date:'' }];
+  return [];
+}
+function deductionOf(ym){ return deductionItems(ym).reduce((a,i) => a + (parseInt(i.amount,10) || 0), 0); }
 function monthTotal(ym){
   const r = monthRange(ym);
   const s = rangeSum(r.from, r.to);
   s.money += bonusOf(ym);
   s.bonus = bonusOf(ym);
+  s.deduction = deductionOf(ym);
+  s.money -= s.deduction;
   return s;
 }
 function monthRange(ym){
@@ -204,19 +245,48 @@ function monthRange(ym){
   const a = new Date(y, m-1, 1), b = new Date(y, m, 0);
   return { from: iso(a), to: iso(b), days: b.getDate() };
 }
-function plannedShifts(from, to){
-  // сколько смен по текущему графику в период
-  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
-  const start = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
-  const cyc = p.w + p.o, out = [];
-  let d = new Date(start);
-  if (d < fromIso(from)) {
-    const diff = Math.floor((fromIso(from) - d) / 86400000);
-    d = addDays(d, diff - (diff % cyc));
+function cycleBlocks(){
+  const c = (S.plan.cycle || '').trim();
+  if(c){
+    const out = [];
+    c.split(',').forEach(part => {
+      const m = part.split('/');
+      const w = parseInt(m[0], 10), o = parseInt(m[1], 10);
+      if(w > 0) out.push({ w, o: isNaN(o) ? 0 : o });
+    });
+    if(out.length) return out;
   }
-  while (d <= fromIso(to)){
-    const idx = Math.floor((d - start) / 86400000) % cyc;
-    if (idx < p.w) out.push(iso(d));
+  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
+  return [{ w:p.w, o:p.o }];
+}
+function cycleLen(){ return cycleBlocks().reduce((a,b) => a + b.w + b.o, 0); }
+function cycleLabel(){
+  const c = (S.plan.cycle || '').trim();
+  if(c) return c.replace(/\s/g,'');
+  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
+  return p.id;
+}
+function isWorkIdx(i){
+  const len = cycleLen();
+  let rem = ((i % len) + len) % len;
+  const blocks = cycleBlocks();
+  for(let b = 0; b < blocks.length; b++){
+    const bl = blocks[b];
+    if(rem < bl.w) return true;      // рабочие дни блока
+    rem -= bl.w;
+    if(rem < bl.o) return false;     // выходные блока
+    rem -= bl.o;
+  }
+  return false;
+}
+function plannedShifts(from, to){
+  const start = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
+  const out = [];
+  let d = new Date(start);
+  if(d < fromIso(from)) d = addDays(d, Math.floor((fromIso(from) - d) / 86400000));
+  while(d <= fromIso(to)){
+    const idx = Math.floor((d - start) / 86400000);
+    if(isWorkIdx(idx)) out.push(iso(d));
     d = addDays(d, 1);
   }
   return out;
@@ -404,11 +474,20 @@ function renderCal(){
 function fillMonthByPattern(){
   const ym = `${calY}-${pad(calM+1)}`, r = monthRange(ym);
   const days = plannedShifts(r.from, r.to);
+  const spd = Math.max(1, Math.min(3, parseInt(S.plan.shiftsPerDay,10) || 1));
+  const per = parseFloat(S.plan.hours) || 12;
   let added = 0;
   days.forEach(d => {
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) return;
-    S.shifts[d] = { kind:'work', hours:S.plan.hours || 12, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    const rec = { kind:'work', hours:per, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    if(spd > 1){
+      const part = Math.round(per / spd * 100) / 100;
+      rec.parts = [];
+      for(let i = 0; i < spd; i++) rec.parts.push({ slot:'day', hours:part });
+      rec.hours = Math.round(part * spd * 100) / 100;
+    }
+    S.shifts[d] = rec;
     added++;
   });
   save(); renderCal(); toast(`Заполнено смен: ${added}`);
@@ -428,7 +507,7 @@ let sheetDate = null, sheetKind = 'work', sheetSlot = 'day', sheetShort = 0;
 function openSheet(date){
   sheetDate = date;
   const dt = fromIso(date);
-  const sh = getShift(date);
+  const sh = (window.__fxMate ? getMateShift(date) : getShift(date));
   sheetKind = sh ? sh.kind : 'work';
   sheetSlot = (sh && sh.slot) || 'day';
   sheetShort = sh ? (sh.shortApplied ? 1 : 0) : (isShort(date, S.plan.shortMode) ? 1 : 0);
@@ -447,7 +526,7 @@ function openSheet(date){
   $('#shHours').value = defH;
   renderSlotChips();
   renderShortChips();
-  $('#shRate').value = (sh && sh.rate != null) ? sh.rate : S.profile.rate;
+  $('#shRate').value = (sh && sh.rate != null) ? sh.rate : (window.__fxMate ? (S.mate.rate || 0) : S.profile.rate);
   $('#shBonus').value = (sh && sh.bonus) || 0;
   $('#shNote').value = (sh && sh.note) || '';
   $('#hoursField').style.display = sheetKind === 'work' ? '' : 'none';
@@ -538,12 +617,25 @@ function initSheet(){
       ? { kind:'work', hours:h, rate:parseInt($('#shRate').value||0), bonus:parseInt($('#shBonus').value||0),
           note:$('#shNote').value.trim(), slot:sheetSlot, shortApplied:!!sheetShort }
       : { kind:sheetKind, hours:0, rate:0, bonus:0, note:$('#shNote').value.trim() };
-    S.shifts[sheetDate] = rec;
+    if(window.__fxParts && window.__fxParts.length > 1){
+      rec.parts = window.__fxParts.map(pt => ({ slot:pt.slot, hours:parseFloat(pt.hours) || 0 }));
+      rec.hours = rec.parts.reduce((a,pt) => a + pt.hours, 0);
+    }
+    if(window.__fxMate){
+      if(!S.mate.shifts) S.mate.shifts = {};
+      S.mate.shifts[sheetDate] = rec;
+    }else{
+      S.shifts[sheetDate] = rec;
+    }
     save(); $('#sheetWrap').classList.remove('on');
     renderAll(); celebrate(); sound('save'); toast('Сохранено');
   };
   $('#shDel').onclick = () => {
-    if(S.shifts[sheetDate]){ delete S.shifts[sheetDate]; save(); $('#sheetWrap').classList.remove('on'); renderAll(); toast('Удалено'); }
+    const target = window.__fxMate ? getMateShift(sheetDate) : S.shifts[sheetDate];
+    if(target){
+      if(window.__fxMate) delete S.mate.shifts[sheetDate]; else delete S.shifts[sheetDate];
+      save(); $('#sheetWrap').classList.remove('on'); renderAll(); toast('Удалено');
+    }
     else $('#sheetWrap').classList.remove('on');
   };
 }
@@ -597,21 +689,39 @@ function showTextModal(title, txt){
 }
 
 /* ─────────────── ВЫПЛАТЫ: аванс 1-го, зарплата 15-го ─────────────── */
+function payMode(){ return S.profile.payMode || 'half'; }
+function advWindow(){ return Math.max(1, Math.min(28, parseInt(S.profile.advDays,10) || 20)); }
+function advPercent(){ return Math.max(0, Math.min(100, parseInt(S.profile.advPct,10) || 0)); }
+
 function payPeriods(){
   const now = today();
   const advDay = S.profile.advance || 1;
   const payDay = S.profile.payday || 15;
   const dim = (y,m) => new Date(y, m+1, 0).getDate();
   const mk = (y,m,d) => new Date(y, m, d);
+  const mode = payMode();
+  const aw = advWindow();
+  const pct = advPercent();
   const mkPay = (kind, date) => {
     let from, to;
-    if(kind === 'salary'){                      // зарплата = за первую половину месяца
-      from = mk(date.getFullYear(), date.getMonth(), 1);
-      to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
-    }else{                                      // аванс = за вторую половину прошлого месяца
-      const y = date.getFullYear(), m = date.getMonth()-1;
-      from = mk(y, m, 16);
-      to   = mk(y, m, dim(y, m));
+    if(mode === 'pct'){
+      const py = date.getFullYear(), pm = date.getMonth() - 1;
+      if(kind === 'salary'){                 // зарплата: [aw+1 прошлого .. payDay текущего]
+        from = mk(py, pm, aw + 1);
+        to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
+      }else{                                 // аванс: [1..aw] прошлого месяца
+        from = mk(py, pm, 1);
+        to   = mk(py, pm, Math.min(aw, dim(py, pm)));
+      }
+    }else{
+      if(kind === 'salary'){                 // зарплата = первая половина месяца
+        from = mk(date.getFullYear(), date.getMonth(), 1);
+        to   = mk(date.getFullYear(), date.getMonth(), Math.min(payDay, dim(date.getFullYear(), date.getMonth())));
+      }else{                                 // аванс = вторая половина прошлого месяца
+        const y = date.getFullYear(), m = date.getMonth() - 1;
+        from = mk(y, m, 16);
+        to   = mk(y, m, dim(y, m));
+      }
     }
     return { kind, date, from: iso(from), to: iso(to) };
   };
@@ -625,14 +735,58 @@ function payPeriods(){
   list.forEach(p => {
     p.days = Math.max(0, Math.round((p.date - now) / 86400000));
     p.label = p.kind === 'salary' ? `Зарплата ${p.date.getDate()}-го` : `Аванс ${p.date.getDate()}-го`;
-    p.fact = rangeSum(p.from, p.to).money;
-    if(p.kind === 'salary' && monthKey(p.from) === monthKey(ti)) p.fact += bonusOf(monthKey(ti));
+    const rs = rangeSum(p.from, p.to);
+    p.raw = rs.money;
+    p.premium = 0;
+    if(mode === 'pct' && p.kind === 'advance'){
+      p.fact = rs.money * pct / 100;
+      p.premium = rs.money - p.fact;
+    }else{
+      p.fact = rs.money;
+    }
     const future = plannedShifts(p.from, p.to).filter(d => d >= ti);
     p.plan = future.length;
-    p.planMoney = future.length * (S.profile.rate || 0) * (S.plan.hours || S.profile.hours || 13.75);
-    p.total = p.fact + p.planMoney;
+    const perShift = (S.profile.rate || 0) * (S.plan.hours || S.profile.hours || 13.75);
+    p.planMoney = future.length * perShift;
+    p.total = p.fact + (mode === 'pct' ? p.planMoney * pct / 100 : p.planMoney);
   });
+  const advP = list.find(x => x.kind === 'advance');
+  const salP = list.find(x => x.kind === 'salary');
+  if(mode === 'pct' && advP && salP){
+    salP.fact += advP.premium;              // удержанная премия уходит в зарплату
+    salP.premium += advP.premium;
+    salP.total += advP.premium;
+  }
+  if(salP){
+    const bym = (mode === 'pct') ? monthKey(ti) : monthKey(salP.from);
+    if(mode === 'pct' || monthKey(salP.from) === monthKey(ti)){
+      const bo = bonusOf(bym);
+      if(bo){ salP.fact += bo; salP.total += bo; salP.bonusYm = bym; }
+      const ded = deductionOf(bym);
+      if(ded){ salP.fact -= ded; salP.total -= ded; salP.deductionYm = bym; }
+    }
+  }
   return list;
+}
+
+function payBreakdown(){
+  const ti = todayISO(), ym = monthKey(ti);
+  const m = monthRange(ym);
+  const aw = advWindow(), pct = advPercent();
+  const dim = new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();
+  const wTo = iso(new Date(+ym.slice(0,4), +ym.slice(5,7), Math.min(aw, dim)));
+  const win = rangeSum(m.from, wTo);
+  const rest = rangeSum(iso(addDays(fromIso(wTo), 1)), m.to);
+  const items = bonusItems(ym);
+  const bo = bonusOf(ym);
+  let adv = 0, prem = bo;
+  if(payMode() === 'pct'){
+    adv = win.money * pct / 100;
+    prem = win.money - adv + bo;
+  }else{
+    prem = win.money + bo;
+  }
+  return { mode: payMode(), pct, aw, win, rest, adv, prem, bonus: bo, items, ym };
 }
 
 /* ─────────────── ТАБЕЛЬ ─────────────── */
@@ -675,9 +829,11 @@ function renderTab(){
   }).join('') : '<div class="empty">Пока пусто</div>';
   const ymNow = currentTabYm();
   const bo = bonusOf(ymNow);
-  $('#bonusLine').innerHTML = bo ? `<div class="cal-sum" style="margin-bottom:12px"><span>Премия: <b>${money(bo)}</b>${S.bonuses[ymNow].note ? ' · ' + S.bonuses[ymNow].note : ''}</span><span></span></div>` : '';
-  const tot = s.money + bo;
-  $('#tabSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · <b>${s.hours} ч</b></span><span>Итого: <b>${money(tot)}</b></span>`;
+  const bItems = bonusItems(ymNow);
+  $('#bonusLine').innerHTML = bo ? `<div class="cal-sum" style="margin-bottom:12px"><span>Доплаты и премии: <b>${money(bo)}</b>${bItems.length ? ' · ' + bItems.length + ' поз.' : ''}</span><span></span></div>` : '';
+  const ded = deductionOf(ymNow);
+  const tot = s.money + bo - ded;
+  $('#tabSum').innerHTML = `<span>Смен: <b>${s.shifts}</b> · <b>${s.hours} ч</b></span><span>Итого: <b>${money(tot)}</b>${ded ? ' · <span style="color:var(--red)">−' + money(ded) + '</span>' : ''}</span>`;
 }
 function initTab(){
   $$('#tabSeg button').forEach(b => b.onclick = () => { S.ui.tabRange = b.dataset.tr; tabOff = 0; save(); renderTab(); });
@@ -764,28 +920,35 @@ function applyPattern(){
   const from = S.plan.start || todayISO();
   const to = iso(addDays(fromIso(from), 89));
   const days = plannedShifts(from, to);
+  const spd = Math.max(1, Math.min(3, parseInt(S.plan.shiftsPerDay,10) || 1));
+  const per = parseFloat(S.plan.hours) || 12;
   let n = 0;
   days.forEach(d => {
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) return;
-    S.shifts[d] = { kind:'work', hours:S.plan.hours || 12, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    const rec = { kind:'work', hours:per, rate:S.profile.rate, bonus:0, note:'', slot:'day' };
+    if(spd > 1){
+      const part = Math.round(per / spd * 100) / 100;
+      rec.parts = [];
+      for(let i = 0; i < spd; i++) rec.parts.push({ slot:'day', hours:part });
+      rec.hours = Math.round(part * spd * 100) / 100;
+    }
+    S.shifts[d] = rec;
     n++;
   });
-  // выходные тоже помечаем, чтобы в календаре было видно ритм
+  const origin = S.plan.start ? fromIso(S.plan.start) : fromIso(from);
   let off = 0;
-  const p = PATTERNS.find(x => x.id === S.plan.pattern) || PATTERNS[2];
-  const start = fromIso(from), cyc = p.w + p.o;
   for(let i = 0; i < 90; i++){
-    const d = iso(addDays(start, i));
-    if(days.includes(d)) continue;
+    const d = iso(addDays(fromIso(from), i));
+    if(days.indexOf(d) >= 0) continue;
     const ex = getShift(d);
     if(ex && (ex.kind === 'vacation' || ex.kind === 'sick')) continue;
-    if(Math.floor((fromIso(d) - start)/86400000) % cyc >= p.w){
+    if(!isWorkIdx(Math.floor((fromIso(d) - origin) / 86400000))){
       S.shifts[d] = { kind:'off', hours:0, rate:0, bonus:0, note:'' }; off++;
     }
   }
   save(); renderAll();
-  toast(`График ${p.id}: ${n} ${plural(n,'смена','смены','смен')} на 3 месяца`);
+  toast(`График ${cycleLabel()}: ${n} ${plural(n,'смена','смены','смен')} на 3 месяца`);
 }
 
 /* ─────────────── СТАТИСТИКА ─────────────── */
@@ -1333,6 +1496,7 @@ function unlockApp(){
 /* ─────────────── ЗАПУСК ─────────────── */
 function renderAll(){
   renderHome(); renderCal(); renderSched(); renderStats(); renderSet();
+  if(window.fxRenderAll) window.fxRenderAll();
   if($('#walls')) renderWalls();
   if($('#calcValue')) renderCalc();
   if($('#badges')) renderBadges();
@@ -1341,6 +1505,7 @@ function init(){
   initSplash();
   initTabs(); initCal(); initSheet(); initSched(); initStats(); initSet(); initActions(); initTab();
   initCalc(); applyTheme();
+  if(window.fxInit) window.fxInit();
   const locked = initLock();
   if(!locked) setTimeout(initOnb, 350);
   $$('[data-go]').forEach(b => b.onclick = () => { sound('tap'); openSub(b.dataset.go); });
@@ -1356,7 +1521,7 @@ function init(){
   $$('#themeChips .chip').forEach(c => c.onclick = () => {
     S.ui.theme = c.dataset.theme; save(); applyTheme(); sound('tap');
   });
-  $('#abVer').textContent = '1.3.1';
+  $('#abVer').textContent = '1.4';
   renderAll();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
